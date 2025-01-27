@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@workspace/typescript-config/base.json",
+  "compilerOptions": {
+    // "sourceRoot": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // "declarationDir": "./types",
+    "allowJs": true
+    
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@workspace/prisma",
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "predev": "pnpm run build",
+    "dev": "tsc -w",
+    "db:generate": "prisma generate",
+    "build": "rimraf dist && rimraf generated && pnpm run db:generate && tsc"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "@workspace/typescript-config": "workspace:*",
+    "prisma": "^6.2.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  }
+}

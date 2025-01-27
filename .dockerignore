@@ -1,0 +1,32 @@
+# Node modules
+**/node_modules
+**/node_modules/**
+**/generated
+**/generated/**
+
+# Build outputs
+**/dist
+**/.next
+**/build
+
+# Environment and logs
+**/*.log
+**/.env
+**/data
+
+# Next.js files
+**/next-env.d.ts
+**/.next/**
+
+# Config files
+**/config
+**/tempCodeRunnerFile*
+
+# OS files
+.DS_Store
+.git
+.gitignore
+
+out
+
+.turbo
