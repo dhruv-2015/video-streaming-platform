@@ -7,7 +7,7 @@
     "build:docker": "pnpm run docker:api && pnpm run docker:web",
     "docker:api": "docker buildx build -t test:api --target apirunner  .",
     "docker:web": "docker buildx build -t test:web --target webrunner  .",
-    "dev": "turbo dev",
+    "dev": "turbo dev  --global-deps=\".env.*\"",
     "dev:web": "turbo dev --filter=@workspace/web",
     "dev:api": "turbo dev --filter=@workspace/api",
     "lint": "turbo lint",

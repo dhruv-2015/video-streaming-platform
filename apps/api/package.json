@@ -17,7 +17,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@workspace/prisma": "workspace:*",
+    "@workspace/database": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "axios": "^1.7.9",
     "bullmq": "^5.35.1",
@@ -28,7 +28,6 @@
     "ioredis": "^5.4.2",
     "morgan": "^1.10.0",
     "pretty-ms": "^9.2.0",
-    "winston": "^3.17.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

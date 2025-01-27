@@ -1,0 +1,20 @@
+{
+  "name": "@workspace/logger",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "predev": "pnpm run build",
+    "dev": "tsc -w",
+    "build": "tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@workspace/env": "workspace:^",
+    "@workspace/typescript-config": "workspace:^",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  }
+}

@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@workspace/prisma": "workspace:^",
+    "@workspace/database": "workspace:^",
     "@workspace/ui": "workspace:*",
     "lucide-react": "0.456.0",
     "next": "^15.1.0",
