@@ -5,17 +5,19 @@
   "scripts": {
     "build": "turbo build",
     "build:docker": "pnpm run docker:api && pnpm run docker:web",
-    "docker:api": "docker buildx build -t test:api --target apirunner  .",
-    "docker:web": "docker buildx build -t test:web --target webrunner  .",
-    "dev": "turbo dev  --global-deps=\".env.*\"",
-    "dev:web": "turbo dev --filter=@workspace/web",
-    "dev:api": "turbo dev --filter=@workspace/api",
+    "docker:api": "docker build -t test:api --target apirunner .",
+    "docker:web": "docker build -t test:web --target webrunner .",
+    "dev": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\"",
+    "dev:web": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\" --filter=@workspace/web",
+    "dev:api": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\" --filter=@workspace/api",
+    "db:generate": "turbo db:generate --filter=@workspace/database",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "env-cmd": "^10.1.0",
     "prettier": "^3.2.5",
     "turbo": "^2.3.0",
     "typescript": "5.5.4"
@@ -23,5 +25,11 @@
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.0.8",
+      "@types/react-dom": "19.0.3"
+    }
   }
 }

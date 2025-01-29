@@ -4,16 +4,20 @@
     "schema": "prisma/schema.prisma"
   },
   "version": "0.0.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "source": "./src/index.ts",
+  "private": true,
   "scripts": {
     "predev": "pnpm run build",
-    "dev": "tsc -w",
     "db:generate": "prisma generate",
-    "build": "rimraf dist && rimraf generated && pnpm run db:generate && tsc"
+    "build": "rimraf generated && pnpm run db:generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1"
+    "@prisma/client": "^6.2.1",
+    "@workspace/env": "workspace:*",
+    "@workspace/logger": "workspace:*",
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.10",

@@ -7,7 +7,8 @@ const logFormat = printf(({ level, message, timestamp }) => {
     return `${timestamp} [${level}]: ${message}`;
 });
 
-const logger = createLogger({
+
+export const logger = createLogger({
     level: "info",
     format: combine(json(), timestamp()),
     // defaultMeta: { service: "user-service" },
@@ -21,7 +22,7 @@ const logger = createLogger({
         // }),
         new transports.DailyRotateFile({
             level: "error",
-            dirname: "logs",
+            dirname: env.LOG_DIR,
             filename: "application-error-%DATE%.log",
             datePattern: "YYYY-MM-DD-HH",
             zippedArchive: true,
@@ -30,7 +31,7 @@ const logger = createLogger({
         }),
         new transports.DailyRotateFile({
             level: "info",
-            dirname: "logs",
+            dirname: env.LOG_DIR,
             filename: "application-info-%DATE%.log",
             datePattern: "YYYY-MM-DD-HH",
             zippedArchive: true,
@@ -39,7 +40,7 @@ const logger = createLogger({
         }),
         new transports.DailyRotateFile({
             level: "warn",
-            dirname: "logs",
+            dirname: env.LOG_DIR,
             filename: "application-warn-%DATE%.log",
             datePattern: "YYYY-MM-DD-HH",
             zippedArchive: true,
@@ -51,13 +52,11 @@ const logger = createLogger({
 
 if (env.NODE_ENV !== "production") {
     logger.add(
-        new transports.Console({
-            format: logFormat,
-        }),
+        new transports.Console(),
     );
 }
 
 // const api_logger = logger.child({ service: "api" });
 
 // export default api_logger;
-export { logger };
+export default logger;
