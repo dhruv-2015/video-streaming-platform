@@ -1,0 +1,23 @@
+{
+  "name": "@workspace/auth",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "source": "./src/index.ts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@auth/express": "^0.8.4",
+    "@workspace/database": "workspace:^"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:^",
+    "@types/express": "^5.0.0"
+  }
+}

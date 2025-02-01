@@ -11,7 +11,7 @@
 
 # Environment and logs
 **/*.log
-**/.env
+# **/.env
 **/data
 
 # Next.js files

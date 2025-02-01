@@ -26,3 +26,4 @@ redis.on("error", error => {
 redis.on("reconnecting", () => {
     logger.info("🔄️ REDIS reconnecting...");
 });
+

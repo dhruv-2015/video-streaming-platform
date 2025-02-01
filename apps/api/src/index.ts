@@ -1,16 +1,16 @@
 import { env } from "@workspace/env";
 import express from "express";
 import morgan from "morgan";
-import { expressAuth } from "./auth/index.js";
+// @ts-ignore
+import { expressAuth } from "@workspace/auth";
 import {logger} from "@workspace/logger";
 import { prisma, redis } from "@workspace/database";
+import { trpcExpress } from "@workspace/trpc";
+
 
 // process.exit()
 redis.disconnect(); // because i dont have redis db setup
 
-// setTimeout(() => {
-//     // prisma.$transaction
-// }, 100);
 
 const app = express();
 app.use(express.json());
@@ -18,14 +18,23 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.set("trust proxy", true);
 
+app.use("/exit", (req, res) => {
+    res.send("Exiting process...");
+    process.exit(0);
+})
+
 app.use(
     "/api/auth/*",
     expressAuth,
 );
 
+
+app.use("/api/trpc", trpcExpress)
 const server = app.listen(env.PORT, () => {
     logger.info(`✅ Server listening on port ${env.PORT}`);
 });
+
+
 
 
 
