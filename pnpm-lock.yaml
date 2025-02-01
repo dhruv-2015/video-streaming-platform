@@ -33,21 +33,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@auth/express':
-        specifier: ^0.8.4
-        version: 0.8.4(express@4.21.2)
-      '@workspace/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@workspace/env':
-        specifier: workspace:*
-        version: link:../../packages/env
-      '@workspace/logger':
-        specifier: workspace:^
-        version: link:../../packages/logger
-      '@workspace/typescript-config':
-        specifier: workspace:*
-        version: link:../../packages/typescript-config
       axios:
         specifier: ^1.7.9
         version: 1.7.9
@@ -103,6 +88,24 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.15.0
         version: 8.18.1(eslint@9.17.0(jiti@1.21.6))(typescript@5.7.3)
+      '@workspace/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@workspace/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@workspace/env':
+        specifier: workspace:*
+        version: link:../../packages/env
+      '@workspace/logger':
+        specifier: workspace:^
+        version: link:../../packages/logger
+      '@workspace/trpc':
+        specifier: workspace:*
+        version: link:../../packages/trpc
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
       concurrently:
         specifier: ^9.1.2
         version: 9.1.2
@@ -179,6 +182,22 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.7.3
+
+  packages/auth:
+    dependencies:
+      '@auth/express':
+        specifier: ^0.8.4
+        version: 0.8.4(express@4.21.2)
+      '@workspace/database':
+        specifier: workspace:^
+        version: link:../database
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.0
+      '@workspace/typescript-config':
+        specifier: workspace:^
+        version: link:../typescript-config
 
   packages/database:
     dependencies:
@@ -295,6 +314,28 @@ importers:
       '@trpc/server':
         specifier: ^10.45.2
         version: 10.45.2
+      '@workspace/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@workspace/database':
+        specifier: workspace:*
+        version: link:../database
+      superjson:
+        specifier: ^2.2.2
+        version: 2.2.2
+      zod:
+        specifier: ^3.23.8
+        version: 3.24.1
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.0
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.6.3
+        version: 5.7.3
 
   packages/typescript-config: {}
 
@@ -1613,6 +1654,10 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
+  copy-anything@3.0.5:
+    resolution: {integrity: sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==}
+    engines: {node: '>=12.13'}
+
   core-js-pure@3.39.0:
     resolution: {integrity: sha512-7fEcWwKI4rJinnK+wLTezeg2smbFFdSBP6E2kQZNbnzM2s1rpKQ6aaRteZSSg7FLU3P0HGGVo/gbpfanU36urg==}
 
@@ -2412,6 +2457,10 @@ packages:
   is-weakset@2.0.3:
     resolution: {integrity: sha512-LvIm3/KWzS9oRFHugab7d+M/GcBXuXX5xZkzPmN+NxihdQlZUQ4dWuSV1xR/sq6upL1TJEDrfBgRepHFdBtSNQ==}
     engines: {node: '>= 0.4'}
+
+  is-what@4.1.16:
+    resolution: {integrity: sha512-ZhMwEosbFJkA0YhFnNDgTM4ZxDRsS6HqTo7qsZM08fehyRYIYa0yHu5R6mgo1n/8MgaPBXiPimPD77baVFYg+A==}
+    engines: {node: '>=12.13'}
 
   isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
@@ -3415,6 +3464,10 @@ packages:
     resolution: {integrity: sha512-8EbVDiu9iN/nESwxeSxDKe0dunta1GOlHufmSSXxMD2z2/tMZpDMpvXQGsc+ajGo8y2uYUmixaSRUc/QPoQ0GA==}
     engines: {node: '>=16 || 14 >=14.17'}
     hasBin: true
+
+  superjson@2.2.2:
+    resolution: {integrity: sha512-5JRxVqC8I8NuOUjzBbvVJAKNM8qoVuH0O77h4WInc/qC2q5IreqKxYwgkga3PfA22OayK2ikceb/B26dztPl+Q==}
+    engines: {node: '>=16'}
 
   supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
@@ -5027,6 +5080,10 @@ snapshots:
 
   cookie@0.7.2: {}
 
+  copy-anything@3.0.5:
+    dependencies:
+      is-what: 4.1.16
+
   core-js-pure@3.39.0: {}
 
   cors@2.8.5:
@@ -6026,6 +6083,8 @@ snapshots:
     dependencies:
       call-bind: 1.0.8
       get-intrinsic: 1.2.6
+
+  is-what@4.1.16: {}
 
   isarray@2.0.5: {}
 
@@ -7097,6 +7156,10 @@ snapshots:
       mz: 2.7.0
       pirates: 4.0.6
       ts-interface-checker: 0.1.13
+
+  superjson@2.2.2:
+    dependencies:
+      copy-anything: 3.0.5
 
   supports-color@5.5.0:
     dependencies:

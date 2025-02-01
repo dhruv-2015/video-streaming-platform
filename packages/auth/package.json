@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/trpc",
+  "name": "@workspace/auth",
   "version": "1.0.0",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -13,15 +13,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@trpc/server": "^10.45.2",
-    "@workspace/auth": "workspace:*",
-    "@workspace/database": "workspace:*",
-    "superjson": "^2.2.2",
-    "zod": "^3.23.8"
+    "@auth/express": "^0.8.4",
+    "@workspace/database": "workspace:^"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@workspace/typescript-config": "workspace:*",
-    "typescript": "^5.6.3"
+    "@workspace/typescript-config": "workspace:^",
+    "@types/express": "^5.0.0"
   }
 }

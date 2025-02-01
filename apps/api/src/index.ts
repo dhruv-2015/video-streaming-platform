@@ -1,7 +1,8 @@
 import { env } from "@workspace/env";
 import express from "express";
 import morgan from "morgan";
-import { expressAuth } from "./auth/index.js";
+// @ts-ignore
+import { expressAuth } from "@workspace/auth";
 import {logger} from "@workspace/logger";
 import { prisma, redis } from "@workspace/database";
 
