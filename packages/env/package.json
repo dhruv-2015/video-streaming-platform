@@ -3,16 +3,37 @@
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "source": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/nextjs.d.ts",
+      "import": "./dist/nextjs.mjs",
+      "require": "./dist/nextjs.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "predev": "tsup",
+    "dev": "tsup --watch"
+  },
   "dependencies": {
-    "@t3-oss/env-nextjs": "^0.12.0",
-    "dotenv": "^16.4.7",
     "zod": "^3.23.8"
   },
+
   "devDependencies": {
     "@types/node": "22.9.0",
+    "tsup": "^8.3.6",
     "@workspace/typescript-config": "workspace:*",
     "typescript": "^5.6.3",
     "valibot": "1.0.0-beta.14"

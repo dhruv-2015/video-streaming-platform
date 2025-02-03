@@ -14,8 +14,13 @@
       "dependsOn": ["^check-types"]
     },
     "dev": {
+      "dependsOn": ["^predev"],
       "cache": false,
       "persistent": true
+    },
+    "predev": {
+      "cache": false,
+      "persistent": false
     },
     "db:generate": {
       "cache": false,

@@ -1,7 +1,9 @@
-import { nextenv as env } from "@workspace/env";
-import { NextConfig } from "next";
-const nextConfig: NextConfig = {
-  transpilePackages: ["@workspace/*"],
+// import { nextenv as env } from "@workspace/env";
+// import { NextConfig } from "next";
+
+const { env } = process;
+const nextConfig = {
+  // transpilePackages: ["@workspace/ui"],
   output: "standalone",
   eslint: {
     // dirs: ["app", "components", "lib", "trpc", "hooks"],
@@ -9,13 +11,13 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  
+
   rewrites: async () => {
     if (env.NODE_ENV !== "development") {
       return [
         {
           source: "/api/:path*",
-          destination: env.NEXT_PUBLIC_API_URL + "/api/:path*",
+          destination: env.NEXT_PUBLIC_URL + "/api/:path*",
         },
       ];
     }

@@ -4,7 +4,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
-  output = "../generated/client"
+  output          = "../generated/client"
 }
 
 datasource db {
@@ -12,11 +12,254 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
+  id                   String                 @id @default(auto()) @map("_id") @db.ObjectId
+  email                String                 @unique
+  name                 String
+  role                 Role                   @default(USER)
+  image                String?
+  channel_id           String?                @map("channel_id") @db.ObjectId
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  Channel              Channel?
+  VideoView            VideoView[]            @ignore
+  VideoLike            VideoLike[]
+  VideoDissLike        VideoDissLike[]        @ignore
+  ChannelView          ChannelView[]          @ignore
+  VideoComment         VideoComment[]         @ignore
+  VideoCommentLike     VideoCommentLike[]     @ignore
+  VideoCommentDissLike VideoCommentDissLike[] @ignore
+  WatchHistory         WatchHistory[]
+  Playlist             Playlist[]
+  WarchLater           WarchLaterVideo[]
+}
+
+model Channel {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  user_id          String        @unique @db.ObjectId
+  User             User          @relation(fields: [user_id], references: [id])
+  slug             String        @unique
+  name             String
+  description      String        @default("")
+  subscriber_count Int           @default(0)
+  total_views      Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  Videos           Video[]
+  ChannelView      ChannelView[] @ignore
+
+  @@index(fields: [name], map: "name_index")
+}
+
+type S3File {
+  path      String
+  bucket    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+enum VideoType {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+model Video {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id    String  @db.ObjectId
+  channel       Channel @relation(fields: [channel_id], references: [id])
+  is_ready      Boolean @default(false)
+  id_deleted    Boolean @default(false)
+  delete_reason String?
+  id_banned     Boolean @default(false)
+  banned_reason String?
+
+  title                      String
+  description                String            @default("")
+  thumbnail_s3_path          S3File?
+  avalable_thumbnail_s3_path S3File[]
+  view_count                 BigInt            @default(0)
+  like_count                 BigInt            @default(0)
+  dislike_count              BigInt            @default(0)
+  video_type                 VideoType         @default(PUBLIC)
+  is_published               Boolean           @default(false)
+  published_at               DateTime          @default(now())
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  VideoFile                  VideoFile?
+  VideoView                  VideoView[]       @ignore
+  VideoLike                  VideoLike[]       @ignore
+  VideoDissLike              VideoDissLike[]   @ignore
+  VideoComment               VideoComment[]
+  VideoTags                  VideoTags[]
+  WatchHistory               WatchHistory[]    @ignore
+  WarchLaterVideo            WarchLaterVideo[] @ignore
+  PlaylistVideo              PlaylistVideo[]
+}
+
+model VideoFile {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  video_id         String   @unique @db.ObjectId
+  Video            Video    @relation(fields: [video_id], references: [id])
+  audio_channels   Int
+  duration         Int
+  m3u8_url_s3_path S3File
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model VideoView {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  video_id String @db.ObjectId
+  Video    Video  @relation(fields: [video_id], references: [id])
+  user_id  String @db.ObjectId
+  User     User   @relation(fields: [user_id], references: [id])
+
+  @@unique([video_id, user_id])
+}
+
+model VideoLike {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  video_id   String   @db.ObjectId
+  Video      Video    @relation(fields: [video_id], references: [id])
+  user_id    String   @db.ObjectId
+  User       User     @relation(fields: [user_id], references: [id])
+  assignedAt DateTime @default(now())
+
+  @@unique([video_id, user_id])
+}
+
+model VideoDissLike {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  video_id   String   @db.ObjectId
+  Video      Video    @relation(fields: [video_id], references: [id])
+  user_id    String   @db.ObjectId
+  User       User     @relation(fields: [user_id], references: [id])
+  assignedAt DateTime @default(now())
+
+  @@unique([video_id, user_id])
+}
+
+model ChannelView {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id String   @db.ObjectId
+  Channel    Channel  @relation(fields: [channel_id], references: [id])
+  user_id    String   @db.ObjectId
+  User       User     @relation(fields: [user_id], references: [id])
+  assignedAt DateTime @default(now())
+
+  @@unique([channel_id, user_id])
+}
+
+model VideoComment {
+  id                   String                 @id @default(auto()) @map("_id") @db.ObjectId
+  video_id             String                 @db.ObjectId
+  Video                Video                  @relation(fields: [video_id], references: [id])
+  user_id              String                 @db.ObjectId
+  User                 User                   @relation(fields: [user_id], references: [id])
+  parent_id            String?                @db.ObjectId
+  Parent               VideoComment?          @relation("CommentParent", fields: [parent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  text                 String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  VideoComment         VideoComment[]         @relation("CommentParent")
+  VideoCommentLike     VideoCommentLike[]     @ignore
+  VideoCommentDissLike VideoCommentDissLike[] @ignore
+}
+
+model VideoCommentLike {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  comment_id String       @db.ObjectId
+  Comment    VideoComment @relation(fields: [comment_id], references: [id])
+  user_id    String       @db.ObjectId
+  User       User         @relation(fields: [user_id], references: [id])
+  assignedAt DateTime     @default(now())
+
+  @@unique([comment_id, user_id])
+}
+
+model VideoCommentDissLike {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  comment_id String       @db.ObjectId
+  Comment    VideoComment @relation(fields: [comment_id], references: [id])
+  user_id    String       @db.ObjectId
+  User       User         @relation(fields: [user_id], references: [id])
+  assignedAt DateTime     @default(now())
+
+  @@unique([comment_id, user_id])
+}
+
+model Tags {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  name      String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  VideoTags VideoTags[] @ignore
+}
+
+model VideoTags {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  name      String
-  image     String?
+  video_id  String   @db.ObjectId
+  Video     Video    @relation(fields: [video_id], references: [id])
+  tag_id    String   @db.ObjectId
+  Tag       Tags     @relation(fields: [tag_id], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model WatchHistory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user_id   String   @db.ObjectId
+  User      User     @relation(fields: [user_id], references: [id])
+  video_id  String   @db.ObjectId
+  Video     Video    @relation(fields: [video_id], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([user_id, video_id])
+}
+
+model WarchLaterVideo {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user_id   String   @db.ObjectId
+  User      User     @relation(fields: [user_id], references: [id])
+  video_id  String   @db.ObjectId
+  Video     Video    @relation(fields: [video_id], references: [id])
+  index     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([user_id, video_id])
+  @@index([user_id, index])
+  @@map("WarchLater")
+}
+
+model Playlist {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  creater_id    String          @db.ObjectId
+  creater       User            @relation(fields: [creater_id], references: [id])
+  name          String
+  image         S3File?
+  is_private    Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  PlaylistVideo PlaylistVideo[]
+}
+
+model PlaylistVideo {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  playlist_id String   @db.ObjectId
+  playlist    Playlist @relation(fields: [playlist_id], references: [id])
+  video_id    String   @db.ObjectId
+  video       Video    @relation(fields: [video_id], references: [id])
+  index       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([playlist_id, video_id])
 }

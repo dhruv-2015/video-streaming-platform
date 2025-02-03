@@ -1,3 +1,4 @@
+declare const window: any;
 import type { StandardSchemaDictionary, StandardSchemaV1 } from "./standard";
 import { parseWithDictionary } from "./standard";
 
