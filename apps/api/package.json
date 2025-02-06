@@ -20,6 +20,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@workspace/auth": "workspace:*",
+    "@workspace/database": "workspace:*",
+    "@workspace/env": "workspace:*",
+    "@workspace/logger": "workspace:^",
+    "@workspace/trpc": "workspace:*",
     "axios": "^1.7.9",
     "bullmq": "^5.35.1",
     "cookie-parser": "^1.4.7",
@@ -28,6 +33,7 @@
     "express": "^4",
     "morgan": "^1.10.0",
     "pretty-ms": "^9.2.0",
+    "sharp": "^0.33.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -40,11 +46,6 @@
     "@types/node-fetch": "^2.6.12",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
-    "@workspace/auth": "workspace:*",
-    "@workspace/database": "workspace:*",
-    "@workspace/env": "workspace:*",
-    "@workspace/logger": "workspace:^",
-    "@workspace/trpc": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "concurrently": "^9.1.2",
     "eslint": "^9.15.0",

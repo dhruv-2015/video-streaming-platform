@@ -2,11 +2,12 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
-    // "sourceRoot": ".",
-    // "declarationDir": "./types",
-    "allowJs": true
-    
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "generated"]
 }

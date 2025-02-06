@@ -1,7 +1,11 @@
 import Redis from "ioredis";
 export * from "ioredis";
 import { env } from "@workspace/env";
-import { logger } from "@workspace/logger";
+import loggerDefault, { Logger } from "@workspace/logger";
+
+const logger: Logger = loggerDefault.child({ service: "@workspace/database" });
+// export default logger;
+
 
 // export const redis = new Redis(config.REDIS_URL);
 
@@ -20,6 +24,7 @@ redis.on("connect", () => {
     logger.info("✅ Redis connected");
 });
 redis.on("error", error => {
+    
     logger.error("❌ REDIS ERROR", error);
     // process.exit(1);
 });

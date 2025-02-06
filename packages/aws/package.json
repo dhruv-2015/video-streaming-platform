@@ -1,15 +1,37 @@
 {
   "name": "@workspace/aws",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "dev": "tsup --watch",
+    "predev": "tsup"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.741.0",
+    "@aws-sdk/s3-request-presigner": "^3.741.0",
     "tsup": "^8.3.6"
+  },
+  "dependencies": {
+    "@workspace/env": "workspace:^",
+    "@workspace/logger": "workspace:*",
+    "mime": "^4.0.6"
   }
 }

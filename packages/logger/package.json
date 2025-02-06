@@ -4,13 +4,27 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
   "private": true,
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "@workspace/env": "workspace:^",
-    "@workspace/typescript-config": "workspace:^",
+    "@workspace/typescript-config": "workspace:^"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.6",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
   }

@@ -1,0 +1,37 @@
+{
+  "name": "@workspace/services",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "./src/index.ts",
+  "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "scripts": {
+    "predev": "pnpm run build",
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@workspace/database": "workspace:^",
+    "@workspace/env": "workspace:^",
+    "@workspace/logger": "workspace:^",
+    "chromadb": "^1.10.4",
+    "@xenova/transformers": "^2.17.2"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.6"
+  }
+}

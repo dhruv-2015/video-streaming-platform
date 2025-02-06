@@ -1,10 +1,15 @@
 import { z } from "zod";
-
 // import { prisma } from "@workspace/database";
+import { customS3Uploader } from "@workspace/aws";
 
-import { protectedProcedure, publicProcedure, router } from "@/trpc";
+import { protectedApiProcedure, publicProcedure, router } from "../trpc";
 import { prisma } from "@workspace/database";
 import { TRPCError } from "@trpc/server";
+import { env } from "@workspace/env";
+import logger from "../logger";
+// import { videoRouter } from "./user/video";
+// import { t } from "../trpc";
+
 
 const userZodObject = z.object({
   id: z.string(),
@@ -15,15 +20,17 @@ const userZodObject = z.object({
   channel_id: z.string().optional(),
 });
 
-export const postRouter = router({
-  getUser: protectedProcedure
+export const userRouter = router({
+  getUser: protectedApiProcedure
     .meta({
       openapi: {
         method: "GET",
-        summary: "Get user",
+        summary: "Get user by id",
         description: "Get user",
         path: "/user/{id}",
         protect: true,
+        tags: ["User"],
+
       },
     })
     .input(
@@ -39,6 +46,16 @@ export const postRouter = router({
             id: ctx.session.user.id,
           },
         });
+        if (user?.id === input.id) {
+          return {
+            id: user.id,
+            name: user.name,
+            image: user.image ?? undefined,
+            email: user.email,
+            role: user.role as "ADMIN" | "USER",
+            channel_id: user.channel_id ?? undefined,
+          };
+        }
         if (user?.role !== "ADMIN") {
           throw new TRPCError({
             code: "UNAUTHORIZED",
@@ -67,7 +84,19 @@ export const postRouter = router({
         channel_id: user.channel_id ?? undefined,
       };
     }),
-  getMe: protectedProcedure
+  getMe: protectedApiProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        summary: "Get user",
+        description: "Get user",
+        path: "/user",
+        protect: true,
+        tags: ["User"],
+
+      },
+    })
+    .input(z.object({}))
     .output(
       z.object({
         id: z.string(),
@@ -100,34 +129,20 @@ export const postRouter = router({
       };
     }),
 
-  updateName: protectedProcedure
+  updateName: protectedApiProcedure
     .meta({
       openapi: {
         method: "PATCH",
         path: "/user/name",
         summary: "Update user name",
-        description: "id fild can only be use by admins",
         protect: true,
+        tags: ["User"],
       },
     })
-    .input(z.object({ name: z.string(), id: z.string().optional() }))
+    .input(z.object({ name: z.string() }))
     .output(userZodObject)
     .mutation(async ({ ctx, input }) => {
       let id = ctx.session.user.id;
-      if (input.id) {
-        const user = await prisma.user.findUnique({
-          where: {
-            id: ctx.session.user.id,
-          },
-        });
-        if (!user || user.role !== "ADMIN") {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "You are not authorized to update this user",
-          });
-        }
-        id = input.id;
-      }
 
       const user = await prisma.user.update({
         where: {
@@ -147,7 +162,7 @@ export const postRouter = router({
       };
     }),
 
-  updateRole: protectedProcedure
+  updateRole: protectedApiProcedure
     .meta({
       openapi: {
         method: "PATCH",
@@ -155,6 +170,7 @@ export const postRouter = router({
         summary: "Update user role",
         description: "this is only for admins",
         protect: true,
+        tags: ["User"],
       },
     })
     .input(z.object({ id: z.string(), role: z.enum(["ADMIN", "USER"]) }))
@@ -190,28 +206,125 @@ export const postRouter = router({
       };
     }),
 
-  getPreSignedUrlForImage: protectedProcedure
+  getPreSignedUrlForImage: protectedApiProcedure
     // .input(z.object({ }))
-    .output(z.object({ url: z.string() }))
+    .meta({
+      openapi: {
+        method: "GET",
+        path: "/user/image/getPresignedUrl",
+        summary: "Get presigned url for image upload",
+        protect: true,
+        tags: ["User"],
+      },
+    })
+    .input(
+      z.object({
+        image_name: z.string(),
+      }),
+    )
+    .output(z.object({ url: z.string(), fileId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const user = await prisma.user.findUnique({
-        where: {
-          id: ctx.session.user.id,
-        },
-      });
-      if (!user) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: {
+            id: ctx.session.user.id,
+          },
+        });
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "You are not authorized to perform this action",
+          });
+        }
+      } catch (error) {
+        logger.error("users.getPreSignedUrlForImage", error);
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "You are not authorized to perform this action",
+          code: "INTERNAL_SERVER_ERROR",
+          message: "something went wrong with database",
         });
       }
-    //   if (user.id !== input.id) {
-    //     throw new TRPCError({
-    //       code: "UNAUTHORIZED",
-    //       message: "You are not authorized to update this user",
-    //     });
-    //   }
-      const url = "https://example.com/image.jpg";
-      return { url,  };
+      try {
+        const s3url = await customS3Uploader.generatePresignedUrl({
+          bucket: env.S3_FILES_BUCKET,
+          fileName: input.image_name,
+          for: "avatar"
+        });
+        try {
+          const tempFile = await prisma.tempFileUpload.create({
+            data: {
+              bucket: s3url.s3Data.bucket,
+              key: s3url.s3Data.key,
+              expires: s3url.s3Data.expire,
+            },
+          });
+          return {
+            url: s3url.url,
+            fileId: tempFile.id,
+          };
+        } catch (error) {
+          logger.error("users.getPreSignedUrlForImage", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "something went wrong with saving database",
+          });
+        }
+      } catch (error) {
+        logger.error("users.getPreSignedUrlForImage", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "something went wrong with uploading image",
+        });
+      }
     }),
+  updateImage: protectedApiProcedure
+    .meta({
+      openapi: {
+        method: "PATCH",
+        path: "/user/image",
+        summary: "Update user image",
+        description:
+          "to update user image first get presigned url and fileid and then update image",
+        protect: true,
+        tags: ["User"],
+      },
+    })
+    .input(
+      z.object({
+        fileId: z.string(),
+      }),
+    )
+    .output(z.void())
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const avatarFile = await prisma.tempFileUpload.findUnique({
+          where: {
+            id: input.fileId,
+          },
+        });
+        if (!avatarFile) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "File not found",
+          });
+        }
+        await prisma.$transaction([
+          prisma.user.update({
+            where: {
+              id: ctx.session.user.id,
+            },
+            data: {
+              image: `${avatarFile.key}`,
+            },
+          }),
+          prisma.tempFileUpload.delete({
+            where: {
+              id: input.fileId,
+            },
+          }),
+        ]);
+        return;
+      } catch (error) {}
+    }),
+  // video: videoRouter
+  // t.middleware(async ({ next, path }) => {})
 });

@@ -39,11 +39,27 @@ model User {
   WarchLater           WarchLaterVideo[]
 }
 
+model deletedChannel {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id       String   @db.ObjectId
+  user_id          String   @db.ObjectId
+  slug             String
+  name             String
+  description      String
+  subscriber_count Int
+  total_views      Int
+  createdAt        DateTime
+  updatedAt        DateTime
+  deletedAt        DateTime @default(now())
+}
+
 model Channel {
   id               String        @id @default(auto()) @map("_id") @db.ObjectId
   user_id          String        @unique @db.ObjectId
   User             User          @relation(fields: [user_id], references: [id])
   slug             String        @unique
+  image            S3File?
+  thumbnail        S3File?
   name             String
   description      String        @default("")
   subscriber_count Int           @default(0)
@@ -56,11 +72,19 @@ model Channel {
   @@index(fields: [name], map: "name_index")
 }
 
+model TempFileUpload {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String
+  bucket    String
+  expires   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 type S3File {
-  path      String
+  key       String
   bucket    String
   createdAt DateTime @default(now())
-  updatedAt DateTime
 }
 
 enum VideoType {
@@ -70,15 +94,15 @@ enum VideoType {
 }
 
 model Video {
-  id            String  @id @default(auto()) @map("_id") @db.ObjectId
-  channel_id    String  @db.ObjectId
-  channel       Channel @relation(fields: [channel_id], references: [id])
-  is_ready      Boolean @default(false)
-  id_deleted    Boolean @default(false)
-  delete_reason String?
-  id_banned     Boolean @default(false)
-  banned_reason String?
-
+  id                         String            @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id                 String            @db.ObjectId
+  channel                    Channel           @relation(fields: [channel_id], references: [id])
+  is_ready                   Boolean           @default(false)
+  is_deleted                 Boolean           @default(false)
+  delete_reason              String?
+  is_banned                  Boolean           @default(false)
+  banned_reason              String?
+  error_message              String?
   title                      String
   description                String            @default("")
   thumbnail_s3_path          S3File?
@@ -91,26 +115,30 @@ model Video {
   published_at               DateTime          @default(now())
   createdAt                  DateTime          @default(now())
   updatedAt                  DateTime          @updatedAt
+  orignal_file               S3File?
+  is_uploaded                Boolean           @default(false)
   VideoFile                  VideoFile?
   VideoView                  VideoView[]       @ignore
   VideoLike                  VideoLike[]       @ignore
   VideoDissLike              VideoDissLike[]   @ignore
   VideoComment               VideoComment[]
-  VideoTags                  VideoTags[]
+  video_tags_id              String[]          @db.ObjectId
+  VideoTags                  VideoTags[]      @relation(fields: [video_tags_id], references: [id])
   WatchHistory               WatchHistory[]    @ignore
   WarchLaterVideo            WarchLaterVideo[] @ignore
   PlaylistVideo              PlaylistVideo[]
 }
 
 model VideoFile {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  video_id         String   @unique @db.ObjectId
-  Video            Video    @relation(fields: [video_id], references: [id])
-  audio_channels   Int
-  duration         Int
-  m3u8_url_s3_path S3File
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  video_id          String   @unique @db.ObjectId
+  Video             Video    @relation(fields: [video_id], references: [id])
+  audio_channels    Int
+  subtitle_channels Int
+  duration          Int
+  m3u8_url_s3_path  S3File
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model VideoView {
@@ -194,22 +222,22 @@ model VideoCommentDissLike {
   @@unique([comment_id, user_id])
 }
 
-model Tags {
-  id        String      @id @default(auto()) @map("_id") @db.ObjectId
-  name      String      @unique
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  VideoTags VideoTags[] @ignore
-}
+// model Tags {
+//   id        String      @id @default(auto()) @map("_id") @db.ObjectId
+//   name      String      @unique
+//   createdAt DateTime    @default(now())
+//   updatedAt DateTime    @updatedAt
+//   VideoTags VideoTags[] @ignore
+// }
 
 model VideoTags {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  video_id  String   @db.ObjectId
-  Video     Video    @relation(fields: [video_id], references: [id])
-  tag_id    String   @db.ObjectId
-  Tag       Tags     @relation(fields: [tag_id], references: [id])
+  tag       String   @unique
+  video_id  String[] @db.ObjectId
+  Video     Video[]  @relation(fields: [video_id], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
 }
 
 model WatchHistory {

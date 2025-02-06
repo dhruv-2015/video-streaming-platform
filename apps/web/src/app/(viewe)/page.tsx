@@ -1,17 +1,33 @@
 "use client";
-import React from 'react';
+import React from "react";
 import { Card } from "@/components/ui/card";
 // import { LatestPost } from "@/app/_components/post";
 // import { auth } from "@/auth";
 // import { trpc } from "@/trpc/client";
-import Link from 'next/link'
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
+import { User, VideoOff } from "lucide-react";
+import VideoCart from "@/components/Home/videoCart";
 
-const mockVideos = [
+type Videos = {
+  id: string | number
+  title: string
+  thumbnail: string
+  channel_thumbnail: string
+  channel_name: string
+  channel_slug: string
+  views: string
+  timestamp: string
+
+}
+const mockVideos: Videos[] = [
   {
     id: 1,
     title: "Getting Started with Next.js 13",
     thumbnail: "https://picsum.photos/seed/1/360/200",
-    channel: "Tech Tutorials",
+    channel_thumbnail: "https://picsum.photos/seed/1/360/200",
+    channel_name: "Tech Tutorials",
+    channel_slug: "Tech Tutorials",
     views: "125K",
     timestamp: "2 days ago",
   },
@@ -19,7 +35,9 @@ const mockVideos = [
     id: 2,
     title: "Cooking Masterclass",
     thumbnail: "https://picsum.photos/seed/1/360/200",
-    channel: "Travel Vlogs",
+    channel_thumbnail: "https://picsum.photos/seed/1/360/200",
+    channel_name: "Travel Vlogs",
+    channel_slug: "Travel Vlogs",
     views: "800K views",
     timestamp: "1 week ago",
   },
@@ -27,7 +45,9 @@ const mockVideos = [
     id: 3,
     title: "Tech Review 2023",
     thumbnail: "https://picsum.photos/seed/1/360/200",
-    channel: "Travel Vlogs",
+    channel_thumbnail: "https://picsum.photos/seed/1/360/200",
+    channel_name: "Travel Vlogs",
+    channel_slug: "Travel Vlogs",
     views: "500K views",
     timestamp: "3 days ago",
   },
@@ -35,7 +55,9 @@ const mockVideos = [
     id: 4,
     title: "Travel Vlog: Paris",
     thumbnail: "https://picsum.photos/seed/1/360/200",
-    channel: "Travel Vlogs",
+    channel_thumbnail: "https://picsum.photos/seed/1/360/200",
+    channel_name: "Travel Vlogs",
+    channel_slug: "Travel Vlogs",
     views: "2M views",
     timestamp: "1 month ago",
   },
@@ -43,7 +65,9 @@ const mockVideos = [
     id: 5,
     title: "Fitness Workout",
     thumbnail: "https://picsum.photos/seed/1/360/200",
-    channel: "Travel Vlogs",
+    channel_thumbnail: "https://picsum.photos/seed/1/360/200",
+    channel_name: "Travel Vlogs",
+    channel_slug: "Travel Vlogs",
     views: "300K views",
     timestamp: "5 days ago",
   },
@@ -51,7 +75,9 @@ const mockVideos = [
     id: 6,
     title: "Music Concert Highlights",
     thumbnail: "https://picsum.photos/seed/1/360/200",
-    channel: "Travel Vlogs",
+    channel_thumbnail: "https://picsum.photos/seed/1/360/200",
+    channel_name: "Travel Vlogs",
+    channel_slug: "Travel Vlogs",
     views: "1.5M views",
     timestamp: "2 weeks ago",
   },
@@ -65,27 +91,8 @@ export default async function Home() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {mockVideos.map((video) => (
-          <Link href={`/play/${video.id}`} key={video.id} className='overflow-hidden w-auto'>
-              <Card className="overflow-hidden w-auto">
-                <div className="aspect-video relative">
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title}
-                    className="object-cover w-full h-full"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold line-clamp-2">{video.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{video.channel}</p>
-                  <div className="flex items-center text-sm text-muted-foreground mt-1">
-                    <span>{video.views} views</span>
-                    <span className="mx-1">•</span>
-                    <span>{video.timestamp}</span>
-                  </div>
-                </div>
-              </Card>
-          </Link>
+        {mockVideos.map(video => (
+          <VideoCart key={video.id} video={video} />
         ))}
       </div>
       {/* <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
@@ -116,7 +123,7 @@ export default async function Home() {
             </div>
           </Link>
         </div> */}
-        {/* <div className="flex flex-col items-center gap-2">
+      {/* <div className="flex flex-col items-center gap-2">
           <p className="text-2xl text-white">
             {!isLoading ? data : "Loading tRPC query..."}
           </p>

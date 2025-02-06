@@ -4,23 +4,40 @@ import shutil
 
 
 remove = True
-# remove = False
+# remove = False'
+
+def remove(path):
+    print("Trying To Remove" + path)
+    try:
+        # os.rmdir(path)
+        shutil.rmtree(path)
+    except Exception as e:
+        print("=================")
+        print(e)
+        print("Failed to remove: " + path)
+        print("=================")
 
 def listFilder(name):
     items = os.listdir(name)
     for i in items:
         path = os.path.join(name, i)
         if(os.path.isdir(path)):
+            # if(i.startswith(".git") or ".git" in i):
+            #     continue
             if(i.startswith("node_modules")):
-                print("Trying To Remove" + path)
-                try:
-                    # os.rmdir(path)
-                    shutil.rmtree(path)
-                except Exception as e:
-                    print("=================")
-                    print(e)
-                    print("Failed to remove: " + path)
-                    print("=================")
+                remove(path)
+            elif(i.startswith("out")):
+                remove(path)
+            elif(i.startswith(".turbo")):
+                remove(path)
+            elif(i.startswith(".cache")):
+                remove(path)
+            elif(i.startswith("dist")):
+                remove(path)
+            elif(i.startswith("logs")):
+                remove(path)
+            elif(i.startswith("logs")):
+                remove(path)
             else:
                 listFilder(path)
 

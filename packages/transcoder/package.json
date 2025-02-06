@@ -1,0 +1,28 @@
+{
+  "name": "@workspace/transcoder",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "watch-ts": "concurrently -k -p \"[{name}]\" -n \"tsc,tsc-alias\" -c \"cyan.bold,green.bold\" \"tsc -w\" \"tsc-alias -w\"",
+    "watch-node": "nodemon dist/index.js",
+    "clean": "rimraf dist && rimraf .turbo",
+    "perdev": "rimraf dist",
+    "dev:old": "concurrently -k -p \"[{name}]\" -n \"TypeScript,Node\" -c \"cyan.bold,green.bold\" \"pnpm watch-ts\" \"pnpm watch-node\"",
+    "dev:new": "tsup --watch --onSuccess \"node dist/index.js\"",
+    "dev": "nodemon",
+    "build": "tsup",
+    "build:old": "tsc && tsc-alias",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write ."
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "tsup": "^8.3.6"
+  },
+  "dependencies": {
+    "bullmq": "^5.35.1"
+  }
+}

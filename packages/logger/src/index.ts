@@ -1,4 +1,4 @@
-import { createLogger, transports, format } from "winston";
+import { createLogger, transports, format, Logger } from "winston";
 import "winston-daily-rotate-file";
 const { combine, timestamp, printf, json } = format;
 import { env } from "@workspace/env";
@@ -61,3 +61,4 @@ if (env.NODE_ENV !== "production") {
 
 // export default api_logger;
 export default logger;
+export { Logger };

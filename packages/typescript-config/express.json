@@ -2,14 +2,14 @@
     "$schema": "https://json.schemastore.org/tsconfig",
     "extends": "./base.json",
     "compilerOptions": {
-      "rootDir": "../../apps/api/src",
-      "outDir": "../../apps/api/dist",
+      "rootDir": "${configDir}/src",
+      "outDir": "${configDir}/dist",
       "paths": {
         "@/*": ["./src/*"]
       },
       "declarationMap": false,
       "declaration": false
     },
-    "include": ["../../apps/api/src/**/*.ts"],
-    "exclude": ["../../apps/api/node_modules", "../../apps/api/dist"]
+    "include": ["${configDir}/src/**/*.ts"],
+    "exclude": ["${configDir}/node_modules", "${configDir}/dist"]
   }

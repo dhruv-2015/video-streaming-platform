@@ -112,7 +112,7 @@ COPY turbo.json turbo.json
 
 RUN turbo run build --filter=@workspace/api
 
-RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store pnpm --filter @workspace/api deploy --prod --frozen-lockfile --ignore-scripts ./out
+RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store pnpm --filter @workspace/api deploy --prod --frozen-lockfile ./out
 # RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store pnpm --filter @workspace/api deploy --prod --frozen-lockfile --offline --ignore-scripts ./out
 
 
@@ -135,7 +135,7 @@ RUN mkdir -p /app/logs && chown -R express:nodejs /app
 COPY --from=installerapi --chown=express:nodejs /app/out/dist .
 COPY --from=installerapi --chown=express:nodejs /app/out/node_modules ./node_modules
 COPY --from=installerapi --chown=express:nodejs /app/out/package.json .
-COPY --from=installerapi --chown=express:nodejs /app/packages/database/generated ./packages/database/generated
+# COPY --from=installerapi --chown=express:nodejs /app/packages/database/generated ./packages/database/generated
 
 
 USER express

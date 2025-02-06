@@ -83,6 +83,51 @@ const server = {
     })
     .min(1)
     .transform(Number),
+  S3_ENDPOINT: z.string({
+    message: "S3_ENDPOINT is required",
+  }).url({
+    message: "S3_ENDPOINT MUST be a valid URL",
+  }),
+  S3_REGION: z.string({
+    message: "S3_REGION is required",
+  }).min(1, {
+    message: "S3_REGION is required",
+  }),
+  S3_ACCESS_KEY_ID: z.string({
+    message: "S3_ACCESS_KEY_ID is required",
+  }).min(1, {
+    message: "S3_ACCESS_KEY_ID is required",
+  }),
+  S3_ACCESS_KEY_SECRET: z.string({
+    message: "S3_ACCESS_KEY_SECRET is required",
+  }).min(1, {
+    message: "S3_ACCESS_KEY_SECRET is required",
+  }),
+  S3_FILES_BUCKET: z.string({
+    message: "S3_FILES_BUCKET is required",
+  }).min(1, {
+    message: "S3_FILES_BUCKET is required",
+  }),
+  S3_VIDEO_BUCKET: z.string({
+    message: "S3_VIDEO_BUCKET is required",
+  }).min(1, {
+    message: "S3_VIDEO_BUCKET is required",
+  }),
+  S3_PUBLIC_ENDPOINT: z.string({
+    message: "S3_PUBLIC_ENDPOINT is required",
+  }).url({
+    message: "S3_PUBLIC_ENDPOINT MUST be a valid URL",
+  }),
+  S3_PUBLIC_VIDEO_ENDPOINT: z.string({
+    message: "S3_PUBLIC_VIDEO_ENDPOINT is required",
+  }).url({
+    message: "S3_PUBLIC_VIDEO_ENDPOINT MUST be a valid URL",
+  }),
+  CHROMADB_URL: z.string({
+    message: "CHROMADB_URL is required",
+  }).url({
+    message: "CHROMADB_URL MUST be a valid URL",
+  }),
 } as const;
 
 
@@ -104,7 +149,6 @@ export const env = createEnv({
   //   NODE_ENV: process.env.NODE_ENV,
   //   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   //   LOG_DIR: process.env.LOG_DIR,
-    
   // },
   runtimeEnv: process.env,
 

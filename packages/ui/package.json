@@ -40,6 +40,10 @@
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "exports": {
     "./globals.css": "./dist/globals.css",
     "./postcss.config": "./postcss.config.mjs",

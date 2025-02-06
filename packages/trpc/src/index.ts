@@ -51,7 +51,7 @@ import { env } from "@workspace/env";
 const openApiDocument = generateOpenApiDocument(appRouter, {
     title: "tRPC OpenAPI",
     version: "1.0.0",
-    baseUrl: "http://localhost:3000/api",
+    baseUrl: "http://localhost:5000/api",
 
 });
 // expressRouter.use('/', swaggerUi.serve);

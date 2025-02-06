@@ -1,0 +1,8 @@
+# .npmignore
+.cache
+.turbo
+logs
+src
+.prettierrc
+tsup.config.ts
+tsconfig.json

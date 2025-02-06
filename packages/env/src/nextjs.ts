@@ -11,6 +11,7 @@ export const next_server = {
         message:
           "AUTH_SECRET is required and must be at least 10 characters long",
       }),
+      
     AUTH_GOOGLE_ID: z
       .string({
         message: "AUTH_GOOGLE_ID is required",

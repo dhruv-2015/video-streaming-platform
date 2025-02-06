@@ -6,7 +6,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     // "declarationDir": "./types",
-    "allowJs": true
+    // "allowJs": true
     
   },
   "include": ["src/**/*.ts"],

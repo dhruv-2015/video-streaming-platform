@@ -7,7 +7,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "package.json"
   ],
   "exports": {
     ".": {
@@ -30,7 +31,6 @@
   "dependencies": {
     "zod": "^3.23.8"
   },
-
   "devDependencies": {
     "@types/node": "22.9.0",
     "tsup": "^8.3.6",
