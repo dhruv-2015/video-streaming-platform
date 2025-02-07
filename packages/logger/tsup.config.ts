@@ -23,7 +23,7 @@ export default defineConfig(options => {
     // options.
     return {
         entry: ["./src/index.ts", "./src/**/*.ts"], // Entry file
-        noExternal: ["winston", "winston-daily-rotate-file"], // Bundle any package starting with `@example` and their dependencies
+        noExternal: ["winston", "winston-daily-rotate-filewww"], // Bundle any package starting with `@example` and their dependencies
         splitting: true,
         bundle: true,
         target: "node22",
