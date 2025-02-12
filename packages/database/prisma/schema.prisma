@@ -4,6 +4,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
+  binaryTargets   = ["native", "debian-openssl-1.1.x"]
   output          = "../generated/client"
 }
 
@@ -123,22 +124,64 @@ model Video {
   VideoDissLike              VideoDissLike[]   @ignore
   VideoComment               VideoComment[]
   video_tags_id              String[]          @db.ObjectId
-  VideoTags                  VideoTags[]      @relation(fields: [video_tags_id], references: [id])
+  VideoTags                  VideoTags[]       @relation(fields: [video_tags_id], references: [id])
   WatchHistory               WatchHistory[]    @ignore
   WarchLaterVideo            WarchLaterVideo[] @ignore
   PlaylistVideo              PlaylistVideo[]
 }
 
+// {
+//     src: "http://localhost:5500/output4/sub1.vtt",
+//     label: "English",
+//     language: "en-US",
+//     kind: "subtitles",
+//     type: "vtt",
+//     default: true,
+//   },
+
+type VideoSubTitle {
+  language  String
+  url       S3File
+  label     String
+  type      String
+  createdAt DateTime @default(now())
+}
+
+type IndividualVideoTracks {
+  url       S3File
+  hight     Int
+  width     Int
+  bitrate   Int
+  codec     String
+  duration  Int
+  size      Int
+  createdAt DateTime @default(now())
+}
+
+type IndividualAudioTracks {
+  url       S3File
+  language  String
+  label     String
+  codec     String
+  bitrate   Int
+  duration  Int
+  size      Int
+  createdAt DateTime @default(now())
+}
+
 model VideoFile {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  video_id          String   @unique @db.ObjectId
-  Video             Video    @relation(fields: [video_id], references: [id])
-  audio_channels    Int
-  subtitle_channels Int
-  duration          Int
-  m3u8_url_s3_path  S3File
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                    String                  @id @default(auto()) @map("_id") @db.ObjectId
+  video_id              String                  @unique @db.ObjectId
+  Video                 Video                   @relation(fields: [video_id], references: [id])
+  audio_channels        Int
+  subtitle_channels     Int
+  duration              Int
+  SubTitle              VideoSubTitle[]
+  m3u8_url_s3_path      S3File
+  IndividualVideoTracks IndividualVideoTracks[]
+  IndividualAudioTracks IndividualAudioTracks[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 }
 
 model VideoView {
@@ -237,7 +280,6 @@ model VideoTags {
   Video     Video[]  @relation(fields: [video_id], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 }
 
 model WatchHistory {

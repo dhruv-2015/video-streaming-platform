@@ -16,14 +16,14 @@
   "private": true,
   "scripts": {
     "predev": "pnpm run build",
-    "build": "tsup",
-    "dev": "tsup --watch"
+    "build": "tsup"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@workspace/database": "workspace:^"
+    "@workspace/database": "workspace:^",
+    "@workspace/env": "workspace:^"
   },
   "devDependencies": {
     "@auth/express": "^0.8.4",

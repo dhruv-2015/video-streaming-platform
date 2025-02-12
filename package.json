@@ -27,9 +27,10 @@
     "node": ">=20"
   },
   "pnpm": {
-    "overrides": {
-      "@types/react": "19.0.8",
-      "@types/react-dom": "19.0.3"
+    "supportedArchitectures": {
+      "os": ["win32", "linux"],
+      "cpu": ["x64", "arm64"],
+      "libc": ["glibc"]
     }
   }
 }

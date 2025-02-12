@@ -22,8 +22,8 @@ def listFilder(name):
     for i in items:
         path = os.path.join(name, i)
         if(os.path.isdir(path)):
-            # if(i.startswith(".git") or ".git" in i):
-            #     continue
+            if(i.startswith(".gitue") or ".git" in i):
+                contin
             if(i.startswith("node_modules")):
                 remove(path)
             elif(i.startswith("out")):

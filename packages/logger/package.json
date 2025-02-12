@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch"
+    "predev": "tsup"
   },
   "private": true,
   "author": "",

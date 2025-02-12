@@ -72,7 +72,7 @@ class CustomS3Uploader {
     }
 
     if (options.for === "video") {
-      options.path = options.path ??  `uploads/avatar/${Date.now()}/${Math.random()*10000000000000000}/${options.fileName}`;
+      options.path = options.path ??  `uploads/video/${Date.now()}/${Math.random()*10000000000000000}/${options.fileName}`;
       options.maxSizeBytes = options.maxSizeBytes ?? (5 * 1024 * 1024 * 1024);
     }
 

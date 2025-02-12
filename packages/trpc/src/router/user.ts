@@ -14,7 +14,7 @@ import logger from "../logger";
 const userZodObject = z.object({
   id: z.string(),
   name: z.string(),
-  image: z.string().optional(),
+  image: z.string().url().optional(),
   email: z.string(),
   role: z.enum(["ADMIN", "USER"]),
   channel_id: z.string().optional(),
@@ -78,7 +78,7 @@ export const userRouter = router({
       return {
         id: user.id,
         name: user.name,
-        image: user.image ?? undefined,
+        image: !user.image?.startsWith("http") ?  `${env.S3_PUBLIC_ENDPOINT}/${user.image}`: user.image ?? undefined,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,
@@ -96,7 +96,7 @@ export const userRouter = router({
 
       },
     })
-    .input(z.object({}))
+    .input(z.void())
     .output(
       z.object({
         id: z.string(),
@@ -122,7 +122,7 @@ export const userRouter = router({
       return {
         id: user.id,
         name: user.name,
-        image: user.image ?? undefined,
+        image: !user.image?.startsWith("http") ?  `${env.S3_PUBLIC_ENDPOINT}/${user.image}`: user.image ?? undefined,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,
@@ -302,6 +302,16 @@ export const userRouter = router({
           },
         });
         if (!avatarFile) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "File not found",
+          });
+        }
+        const fileExists = await customS3Uploader.checkFileExists({
+          bucket: avatarFile.bucket,
+          key: avatarFile.key,
+        })
+        if (!fileExists) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "File not found",

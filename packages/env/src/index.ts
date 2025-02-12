@@ -1,53 +1,6 @@
 import { createEnv } from "./env";
 import { z } from "zod";
-import { client, next_server } from "./nextjs";
-
-// import { config } from 'dotenv';
-// config({
-//   path: "../../../.env.local"
-// })
-
-// export const next_server = {
-//   AUTH_SECRET: z
-//     .string({
-//       message:
-//         "AUTH_SECRET is required and must be at least 10 characters long",
-//     })
-//     .min(10, {
-//       message:
-//         "AUTH_SECRET is required and must be at least 10 characters long",
-//     }),
-//   AUTH_GOOGLE_ID: z
-//     .string({
-//       message: "AUTH_GOOGLE_ID is required",
-//     })
-//     .min(1, {
-//       message: "AUTH_GOOGLE_ID is required",
-//     }),
-//   AUTH_GOOGLE_SECRET: z
-//     .string({
-//       message: "AUTH_GOOGLE_SECRET is required",
-//     })
-//     .min(1, {
-//       message: "AUTH_GOOGLE_SECRET is required",
-//     }),
-//   NODE_ENV: z
-//     .enum(["development", "production", "test", "dev", "prod"], {
-//       message: "NODE_ENV must be one of development, production or test",
-//     })
-//     .default("development")
-//     .transform(v => {
-//       if (v === "development" || v === "dev") return "development";
-//       if (v === "production" || v === "prod") return "production";
-//       return "test";
-//     }),
-//   PORT: z
-//     .string({
-//       message: "PORT must be a valid number",
-//     })
-//     .min(1)
-//     .transform(Number),
-// };
+import { client, server as next_server } from "./comman";
 
 const server = {
   ...next_server,
@@ -135,7 +88,7 @@ const server = {
 const shared = {} as const;
 declare const window: any;
 export const env = createEnv({
-  client: client,
+  client,
   server,
   clientPrefix: "NEXT_PUBLIC_",
   shared,

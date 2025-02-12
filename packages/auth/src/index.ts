@@ -4,6 +4,7 @@ import google from "@auth/express/providers/google";
 import { prisma } from "@workspace/database";
 
 import "@auth/express";
+import { env } from "@workspace/env";
 
 declare module "@auth/express" {
   interface Session {
@@ -23,8 +24,11 @@ declare module "@auth/express" {
 export type { Session } from "@auth/express";
 
 const expressAuthConfig: ExpressAuthConfig = {
-  providers: [google],
-  redirectProxyUrl: "http://localhost:3000/api/auth",
+  providers: [google({
+    clientId: env.AUTH_GOOGLE_ID,
+    clientSecret: env.AUTH_GOOGLE_SECRET,
+  })],
+  redirectProxyUrl: "https://localhost:5000/api/auth",
   trustHost: true,
   callbacks: {
     redirect: ({ url, baseUrl }) => {

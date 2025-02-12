@@ -1,0 +1,92 @@
+# # src Dockerfile: https://github.com/vercel/turbo/blob/main/examples/with-docker/apps/web/Dockerfile
+# FROM node:22-bullseye-slim AS alpine
+
+# # setup pnpm on the alpine base
+# FROM alpine AS base
+
+# ARG TURBO_API="https://turbocache.chadasaniya.in"
+# ARG TURBO_TOKEN="123"
+# ARG TURBO_TEAM="dhruv2015"
+
+# ENV TURBO_API=$TURBO_API
+# ENV TURBO_TOKEN=$TURBO_TOKEN
+# ENV TURBO_TEAM=$TURBO_TEAM
+# ENV CI=true
+
+
+# ENV PNPM_HOME="/pnpm"
+# ENV PATH="$PNPM_HOME:$PATH"
+# RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+# # RUN apk add --no-cache libc6-compat && rm -rf /var/cache/apk/*
+# RUN pnpm install turbo --global
+
+# WORKDIR /app
+# COPY . .
+# RUN pnpm install --frozen-lockfile
+# RUN pnpm build && pnpm --filter @workspace/api deploy --prod --frozen-lockfile /out
+
+# WORKDIR /out
+
+# src Dockerfile: https://github.com/vercel/turbo/blob/main/examples/with-docker/apps/web/Dockerfile
+FROM node:22-bullseye-slim AS alpine
+
+# setup pnpm on the alpine base
+FROM alpine AS base
+ENV CI=true
+# ENV NODE_ENV=development
+
+ARG TURBO_API="https://turbocache.chadasaniya.in"
+ARG TURBO_TOKEN="123"
+ARG TURBO_TEAM="dhruv2015"
+
+ENV TURBO_API=$TURBO_API
+ENV TURBO_TOKEN=$TURBO_TOKEN
+ENV TURBO_TEAM=$TURBO_TEAM
+
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+# RUN apk add --no-cache libc6-compat && rm -rf /var/cache/apk/*
+RUN pnpm install turbo@2.4.0 --global
+
+
+FROM base AS prune
+WORKDIR /app
+
+COPY . .
+RUN pnpm turbo prune --scope=@workspace/api --docker
+
+
+FROM base AS installer
+
+WORKDIR /app
+COPY --from=prune /app/out/json/ .
+
+# COPY --from=base /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+# COPY --from=base /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+RUN pnpm install --frozen-lockfile
+
+COPY --from=prune /app/out/full/ .
+# COPY turbo.json turbo.json
+
+RUN turbo run build --filter=@workspace/api
+CMD [ "/bin/bash" ]
+
+# RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @workspace/api deploy --prod --frozen-lockfile /out
+
+WORKDIR /out
+
+
+FROM base AS worker
+
+WORKDIR /app
+COPY --from=installer /out/node_modules ./node_modules
+COPY --from=installer /out/dist .
+COPY --from=installer /out/package.json .
+
+COPY --from=installer /app/packages/database/generated ./packages/database/generated
+
+
+CMD [ "node", "index.js" ]

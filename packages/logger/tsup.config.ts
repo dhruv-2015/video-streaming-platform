@@ -38,7 +38,7 @@ export default defineConfig(options => {
         metafile: process.env.NODE_ENV !== "production",
         
         // dts: true,
-        dts: process.env.NODE_ENV !== "production",
+        dts: true,
         minify: process.env.NODE_ENV === "production",
         // minify: !options.watch,
         sourcemap: process.env.NODE_ENV !== "production", // Enable sourcemaps .map files

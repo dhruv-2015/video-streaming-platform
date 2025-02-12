@@ -14,7 +14,7 @@
       "dependsOn": ["^check-types"]
     },
     "dev": {
-      "dependsOn": ["^predev"],
+      // "dependsOn": ["^predev"],
       "persistent": true,
       "cache": false
     },
@@ -31,7 +31,8 @@
   "globalEnv": [
     "DATABASE_URL",
     "NODE_ENV",
-    "PUBLIC_NEXT_API_URL",
+    "API_URL",
+    "PUBLIC_URL",
     "REDIS_URL",
     "AUTH_SECRET",
     "AUTH_GOOGLE_ID",

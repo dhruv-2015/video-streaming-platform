@@ -1,32 +1,19 @@
-// import { nextenv as env } from "@workspace/env";
+import { env } from "@workspace/env/next";
 // import { NextConfig } from "next";
 
-const { env } = process;
+// const { env } = process;
+/**
+ * @type {import("next").NextConfig}
+ */
 const nextConfig = {
   // transpilePackages: ["@workspace/ui"],
-  output: "standalone",
+  output: !!process.env.VERCEL ? "export" :"standalone",
   eslint: {
+    ignoreDuringBuilds: true,
     // dirs: ["app", "components", "lib", "trpc", "hooks"],
   },
   typescript: {
     ignoreBuildErrors: true,
-  },
-
-  rewrites: async () => {
-    if (env.NODE_ENV !== "development") {
-      return [
-        {
-          source: "/api/:path*",
-          destination: env.NEXT_PUBLIC_URL + "/api/:path*",
-        },
-      ];
-    }
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:5000/api/:path*",
-      },
-    ];
   },
 };
 

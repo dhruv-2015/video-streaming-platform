@@ -33,6 +33,8 @@ app.use("/api", openApiUi);
 const server = app.listen(env.PORT, () => {
   redis.disconnect();
   logger.info(`✅ Server listening on port ${env.PORT}`);
+  env.NODE_ENV == "production" && console.log(`✅ Server listening on port ${env.PORT}`);
+
   redis.disconnect(false)
 });
 
@@ -46,14 +48,31 @@ async function gracefulShutdown() {
   logger.info(`Process uptime: ${process.uptime()} seconds`);
 
   logger.info("Closing Express server...");
+
+if (env.NODE_ENV == "production") {
+  console.info("Received shutdown signal, shutting down gracefully...");
+  console.info(`PID: ${process.pid}`);
+  console.info(`Platform: ${process.platform}`);
+  console.info(`Node Version: ${process.version}`);
+  console.info(`Process uptime: ${process.uptime()} seconds`);
+
+  console.info("Closing Express server...");
+}
+
+
+  
   server?.close(err => {
     if (err) {
       console.error("Error shutting down server:", err);
       process.exit(1);
     }
     logger.info("Express server closed");
+    env.NODE_ENV == "production" && console.log("Express server closed");
+    
   });
-  logger.info("Exiting process closed.");
+  // logger.info("Exiting process closed.");
+  // env.NODE_ENV == "production" && console.log("Express server closed");
+
 
   try {
     // logger.info("Closing Redis connection...");
@@ -61,11 +80,14 @@ async function gracefulShutdown() {
     // logger.info("Redis connection closed");
     await prisma.$disconnect();
     logger.info("MongoDB prisma connection closed");
+    env.NODE_ENV == "production" && console.log("MongoDB prisma connection closed");
+
   } catch (error) {
     console.error("Error during shutdown:", error);
     process.exit(1);
   }
   logger.info("✅ Shutdown complete");
+    env.NODE_ENV == "production" && console.log("✅ Shutdown complete");
 
   process.exit(0);
 }

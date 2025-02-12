@@ -1,0 +1,14 @@
+{
+  "name": "@workspace/transcoder",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "tsup": "^8.3.6"
+  },
+  "dependencies": {
+    "bullmq": "^5.35.1"
+  }
+}

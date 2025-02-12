@@ -2,8 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --plyr-color-main: hsl(0, 100%, 50%);
+  --video-brand: hsl(0, 100%, 50%);
+  --audio-brand: hsl(0, 100%, 50%);
+}
+
 @layer base {
   :root {
+    --vm-player-theme: #ff003f;
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -39,6 +46,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
+    --vm-player-theme: #ff003f;
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;

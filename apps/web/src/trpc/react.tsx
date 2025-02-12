@@ -13,7 +13,7 @@ function getUrl() {
     const base = (() => {
       if (typeof window !== "undefined") return "";
       if (env.NODE_ENV != "development") {
-        return env.NEXT_PUBLIC_URL;
+        return env.PUBLIC_URL;
       }
       return "http://localhost:3000";
     })();
