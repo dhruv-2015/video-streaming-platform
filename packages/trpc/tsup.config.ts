@@ -5,8 +5,8 @@ export default defineConfig(options => {
     return {
         entry: ["./src/index.ts", "./src/**/*.ts"], // Entry file
         skipNodeModulesBundle: true,
-        noExternal: ["@workspace/auth"], // Bundle any package starting with `@example` and their dependencies
-        splitting: true,
+        // noExternal: ["@workspace/auth"], // Bundle any package starting with `@example` and their dependencies
+        // splitting: true,
         bundle: true,
         target: "node22",
         // format: ['esm'],

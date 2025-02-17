@@ -1,14 +1,32 @@
 {
   "name": "@workspace/transcoder",
   "version": "1.0.0",
-  "main": "src/index.js",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "author": "",
   "license": "MIT",
   "description": "",
+  "scripts": {
+    "build": "tsup",
+    "dev": "nodemon",
+    "start": "node dist/index.js"
+  },
   "devDependencies": {
     "tsup": "^8.3.6"
   },
   "dependencies": {
+    "@workspace/aws": "workspace:^",
+    "@workspace/database": "workspace:^",
+    "@workspace/env": "workspace:^",
+    "@workspace/logger": "workspace:^",
     "bullmq": "^5.35.1"
   }
 }

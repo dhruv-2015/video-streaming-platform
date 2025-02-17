@@ -1,8 +1,9 @@
+import SettingsProfilePage from '@/components/profile/page'
 import React from 'react'
 
 const Settings = () => {
   return (
-    <div>Settings</div>
+    <SettingsProfilePage />
   )
 }
 

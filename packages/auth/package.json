@@ -22,8 +22,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@workspace/aws": "workspace:^",
     "@workspace/database": "workspace:^",
-    "@workspace/env": "workspace:^"
+    "@workspace/env": "workspace:^",
+    "@workspace/logger": "workspace:^"
   },
   "devDependencies": {
     "@auth/express": "^0.8.4",

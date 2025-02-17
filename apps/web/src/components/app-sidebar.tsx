@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, History, Home, Menu, ThumbsUp, Video } from "lucide-react";
+import { Clock, History, Home, Menu, ThumbsUp, Video,MonitorPlay } from "lucide-react";
 
 // import { NavMain } from "@/components/nav-main";
 // import { NavProjects } from "@/components/nav-projects";
@@ -23,6 +23,7 @@ import Link from "next/link";
 // This is sample data.
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -43,7 +44,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   variant={"ghost"}
                   asChild
                 >
-                  <div >
+                  <div>
                     <Menu className="mr-4 h-4 w-4" />
                   </div>
                 </Button>
@@ -97,10 +98,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
 
+        <SidebarGroup>
+          <SidebarGroupLabel>Creaters</SidebarGroupLabel>
+          <SidebarMenu>
+          <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Home" asChild>
+                <Link href="/studio">
+                  <MonitorPlay className="mr-2 h-4 w-4" />
+                  <span>Channel</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Your Videos" asChild>
-                <Link href="/">
+                <Link href="/studio/video">
                   <Video className="mr-2 h-4 w-4" />
                   <span>Your Videos</span>
                 </Link>

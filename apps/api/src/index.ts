@@ -10,7 +10,6 @@ import { prisma, redis } from "@workspace/database";
 import { trpcExpress, expressTrpcOpenApi, openApiUi } from "@workspace/trpc";
 
 // process.exit()
-redis.disconnect(); // because i dont have redis db setup
 logger.info("Starting server...");
 const app = express();
 app.use(express.json());
@@ -31,11 +30,11 @@ app.use("/api/trpc", trpcExpress);
 app.use("/api", openApiUi);
 
 const server = app.listen(env.PORT, () => {
-  redis.disconnect();
+  // redis.disconnect();
   logger.info(`✅ Server listening on port ${env.PORT}`);
   env.NODE_ENV == "production" && console.log(`✅ Server listening on port ${env.PORT}`);
 
-  redis.disconnect(false)
+  // redis.disconnect(false)
 });
 
 // app.use("/api");

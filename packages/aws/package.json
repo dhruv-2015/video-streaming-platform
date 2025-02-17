@@ -6,7 +6,7 @@
   "source": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
     }
@@ -26,12 +26,14 @@
   "description": "",
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.741.0",
+    "@aws-sdk/lib-storage": "^3.741.0",
     "@aws-sdk/s3-request-presigner": "^3.741.0",
     "tsup": "^8.3.6"
   },
   "dependencies": {
     "@workspace/env": "workspace:^",
     "@workspace/logger": "workspace:*",
+    "axios": "^1.7.9",
     "mime": "^4.0.6"
   }
 }

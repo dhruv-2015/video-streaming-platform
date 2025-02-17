@@ -23,11 +23,12 @@ model User {
   email                String                 @unique
   name                 String
   role                 Role                   @default(USER)
-  image                String?
+  image                S3File?
   channel_id           String?                @map("channel_id") @db.ObjectId
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
+  // Channel              Channel                @relation(fields: [channel_id], references: [id])
   Channel              Channel?
+  updatedAt            DateTime               @updatedAt
+  createdAt            DateTime               @default(now())
   VideoView            VideoView[]            @ignore
   VideoLike            VideoLike[]
   VideoDissLike        VideoDissLike[]        @ignore
@@ -38,6 +39,7 @@ model User {
   WatchHistory         WatchHistory[]
   Playlist             Playlist[]
   WarchLater           WarchLaterVideo[]
+  ChannelSubscription  ChannelSubscription[]
 }
 
 model deletedChannel {
@@ -55,20 +57,22 @@ model deletedChannel {
 }
 
 model Channel {
-  id               String        @id @default(auto()) @map("_id") @db.ObjectId
-  user_id          String        @unique @db.ObjectId
-  User             User          @relation(fields: [user_id], references: [id])
-  slug             String        @unique
-  image            S3File?
-  thumbnail        S3File?
-  name             String
-  description      String        @default("")
-  subscriber_count Int           @default(0)
-  total_views      Int           @default(0)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  Videos           Video[]
-  ChannelView      ChannelView[] @ignore
+  id                  String                @id @default(auto()) @map("_id") @db.ObjectId
+  user_id             String                @unique @db.ObjectId
+  User                User                  @relation(fields: [user_id], references: [id])
+  // User                User                  @relation(fields: [userId], references: [id])
+  slug                String                @unique
+  image               S3File?
+  thumbnail           S3File?
+  name                String
+  description         String                @default("")
+  subscriber_count    Int                   @default(0)
+  total_views         Int                   @default(0)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  Videos              Video[]
+  ChannelSubscription ChannelSubscription[]
+  ChannelView         ChannelView[]         @ignore
 
   @@index(fields: [name], map: "name_index")
 }
@@ -95,49 +99,41 @@ enum VideoType {
 }
 
 model Video {
-  id                         String            @id @default(auto()) @map("_id") @db.ObjectId
-  channel_id                 String            @db.ObjectId
-  channel                    Channel           @relation(fields: [channel_id], references: [id])
-  is_ready                   Boolean           @default(false)
-  is_deleted                 Boolean           @default(false)
+  id                         String             @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id                 String             @db.ObjectId
+  channel                    Channel            @relation(fields: [channel_id], references: [id])
+  is_ready                   Boolean            @default(false)
+  is_deleted                 Boolean            @default(false)
   delete_reason              String?
-  is_banned                  Boolean           @default(false)
+  is_banned                  Boolean            @default(false)
   banned_reason              String?
   error_message              String?
   title                      String
-  description                String            @default("")
+  description                String             @default("")
   thumbnail_s3_path          S3File?
   avalable_thumbnail_s3_path S3File[]
-  view_count                 BigInt            @default(0)
-  like_count                 BigInt            @default(0)
-  dislike_count              BigInt            @default(0)
-  video_type                 VideoType         @default(PUBLIC)
-  is_published               Boolean           @default(false)
-  published_at               DateTime          @default(now())
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
+  view_count                 BigInt             @default(0)
+  like_count                 BigInt             @default(0)
+  dislike_count              BigInt             @default(0)
+  video_type                 VideoType          @default(PUBLIC)
+  is_published               Boolean            @default(false)
+  published_at               DateTime           @default(now())
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
   orignal_file               S3File?
-  is_uploaded                Boolean           @default(false)
+  is_uploaded                Boolean            @default(false)
   VideoFile                  VideoFile?
-  VideoView                  VideoView[]       @ignore
-  VideoLike                  VideoLike[]       @ignore
-  VideoDissLike              VideoDissLike[]   @ignore
+  VideoView                  VideoView[]        @ignore
+  VideoLike                  VideoLike[]        @ignore
+  VideoDissLike              VideoDissLike[]    @ignore
   VideoComment               VideoComment[]
-  video_tags_id              String[]          @db.ObjectId
-  VideoTags                  VideoTags[]       @relation(fields: [video_tags_id], references: [id])
-  WatchHistory               WatchHistory[]    @ignore
-  WarchLaterVideo            WarchLaterVideo[] @ignore
+  video_tags_id              String[]           @db.ObjectId
+  VideoTags                  VideoTags[]        @relation(fields: [video_tags_id], references: [id])
+  WatchHistory               WatchHistory[]     @ignore
+  WarchLaterVideo            WarchLaterVideo[]  @ignore
   PlaylistVideo              PlaylistVideo[]
+  VideoTranscoding           VideoTranscoding?
 }
-
-// {
-//     src: "http://localhost:5500/output4/sub1.vtt",
-//     label: "English",
-//     language: "en-US",
-//     kind: "subtitles",
-//     type: "vtt",
-//     default: true,
-//   },
 
 type VideoSubTitle {
   language  String
@@ -169,6 +165,23 @@ type IndividualAudioTracks {
   createdAt DateTime @default(now())
 }
 
+type VideoStoryboard {
+  vtt       S3File
+  image     S3File
+  createdAt DateTime @default(now())
+}
+
+model VideoTranscoding {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  video_id  String   @unique @db.ObjectId
+  Video     Video    @relation(fields: [video_id], references: [id])
+  status    String
+  message   String?
+  job_id    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model VideoFile {
   id                    String                  @id @default(auto()) @map("_id") @db.ObjectId
   video_id              String                  @unique @db.ObjectId
@@ -176,8 +189,9 @@ model VideoFile {
   audio_channels        Int
   subtitle_channels     Int
   duration              Int
-  SubTitle              VideoSubTitle[]
-  m3u8_url_s3_path      S3File
+  subtitle              VideoSubTitle[]
+  storyboard            VideoStoryboard
+  m3u8                  S3File
   IndividualVideoTracks IndividualVideoTracks[]
   IndividualAudioTracks IndividualAudioTracks[]
   createdAt             DateTime                @default(now())
@@ -214,6 +228,17 @@ model VideoDissLike {
   assignedAt DateTime @default(now())
 
   @@unique([video_id, user_id])
+}
+
+model ChannelSubscription {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id String   @db.ObjectId
+  Channel    Channel  @relation(fields: [channel_id], references: [id])
+  user_id    String   @db.ObjectId
+  User       User     @relation(fields: [user_id], references: [id])
+  assignedAt DateTime @default(now())
+
+  @@unique([channel_id, user_id])
 }
 
 model ChannelView {

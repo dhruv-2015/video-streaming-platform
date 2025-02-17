@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-export * from "ioredis";
+export * as Redis from "ioredis";
 import { env } from "@workspace/env";
 import loggerDefault, { Logger } from "@workspace/logger";
 
@@ -14,7 +14,7 @@ export const redis = new Redis(env.REDIS_URL, {
         const delay = Math.min(times * 50, 1000);
         return delay;
     },
-    maxRetriesPerRequest: null,
+    maxRetriesPerRequest: 3,
 });
 redis.on("ready", () => {
     logger.info("✅ Redis client ready");

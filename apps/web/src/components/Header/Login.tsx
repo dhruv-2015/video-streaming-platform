@@ -6,7 +6,7 @@ import {signIn} from "next-auth/react"
 
 const Login = () => {
   return (
-    <Button onClick={() => signIn("google")} variant="ghost">
+    <Button onClick={() => signIn("apple")} variant="ghost">
       <User />
     </Button>
   )

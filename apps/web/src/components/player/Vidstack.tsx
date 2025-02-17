@@ -8,10 +8,10 @@ import {
   useMediaRemote,
 } from "@vidstack/react";
 
-// import {
-//   PlyrLayout,
-//   plyrLayoutIcons,
-// } from "@vidstack/react/player/layouts/plyr";
+import {
+  PlyrLayout,
+  plyrLayoutIcons,
+} from "@vidstack/react/player/layouts/plyr";
 import {
   DefaultVideoLayout,
   defaultLayoutIcons
@@ -92,14 +92,14 @@ const Vidstack: React.FC<PlayerOptions> = ({
       >
         <MediaProvider className="rounded-none">
           <Poster className="rounded-none vds-poster" />
-          {subtitles?.map((track) => (
+          {subtitles?.map((track, index) => (
             <Track
               default={track.default}
               src={track.src}
               kind="subtitles"
               language={track.language}
               label={track.label}
-              key={track.src}
+              key={`${track.src} ${index}`}
             />
           ))}
         </MediaProvider>
@@ -111,7 +111,7 @@ const Vidstack: React.FC<PlayerOptions> = ({
         
         {/* <PlyrLayout
           className="rounded-none"
-          thumbnails="http://192.168.0.77:5500/output4/storyboard_copy.vtt"
+          thumbnails={storyboard}
           icons={plyrLayoutIcons}
         /> */}
       </MediaPlayer>

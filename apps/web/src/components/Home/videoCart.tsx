@@ -8,8 +8,9 @@ import { User,PlaySquare } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import {useRouter} from "next/navigation"
+import { trpcClient } from "@/trpc/client";
 
-const VideoCart = ({
+const VideoCart = async ({
   video,
 }: {
   video: {
@@ -23,6 +24,7 @@ const VideoCart = ({
     timestamp: string;
   };
 }) => {
+  // await trpc.user.getMe.query({})
     const {push} = useRouter()
   return (
     <Card key={video.id} className="overflow-hidden w-auto">

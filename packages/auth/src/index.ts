@@ -2,9 +2,14 @@ import { ExpressAuth, type ExpressAuthConfig, getSession } from "@auth/express";
 import { Request, Response, NextFunction } from "express";
 import google from "@auth/express/providers/google";
 import { prisma } from "@workspace/database";
+import { customS3Uploader } from "@workspace/aws";
 
 import "@auth/express";
 import { env } from "@workspace/env";
+import loggerDefault, { Logger } from "@workspace/logger";
+
+const logger: Logger = loggerDefault.child({ service: "@workspace/aws" });
+
 
 declare module "@auth/express" {
   interface Session {
@@ -24,11 +29,13 @@ declare module "@auth/express" {
 export type { Session } from "@auth/express";
 
 const expressAuthConfig: ExpressAuthConfig = {
-  providers: [google({
-    clientId: env.AUTH_GOOGLE_ID,
-    clientSecret: env.AUTH_GOOGLE_SECRET,
-  })],
-  redirectProxyUrl: "https://localhost:5000/api/auth",
+  providers: [
+    google({
+      clientId: env.AUTH_GOOGLE_ID,
+      clientSecret: env.AUTH_GOOGLE_SECRET,
+    }),
+  ],
+  redirectProxyUrl: env.PUBLIC_URL + "/api/auth",
   trustHost: true,
   callbacks: {
     redirect: ({ url, baseUrl }) => {
@@ -38,31 +45,41 @@ const expressAuthConfig: ExpressAuthConfig = {
       return url;
     },
     async jwt({ token, account }) {
-
       if (account) {
         console.log(JSON.stringify(account), "account");
-        
+
         // if (account) {
         //     account
         // }
-        const dbUser = await prisma.user.findUnique({
-          where: {
-            email: token.email!,
-          },
-        });
-
-        if (!dbUser) {
-          // User is not available in db during sign-in so create user
-          const dbUser = await prisma.user.create({
-            data: {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: {
               email: token.email!,
-              name: token.name!,
-              image: token.picture,
             },
           });
-          token.id = dbUser.id;
-        } else {
-          token.id = dbUser.id;
+  
+          if (!dbUser) {
+            const file = await customS3Uploader.uploadProfileImageFromUrl(
+              token.picture!,
+            );
+            // User is not available in db during sign-in so create user
+            const dbUser = await prisma.user.create({
+              data: {
+                email: token.email!,
+                name: token.name!,
+                image: {
+                  bucket: file.bucket,
+                  key: file.key,
+                },
+              },
+            });
+            token.id = dbUser.id;
+          } else {
+            token.id = dbUser.id;
+          }
+        } catch (error: any) {
+          logger.error("auth",error.message);
+          throw new Error(error.message);
         }
         // console.log("\n\n\n");
 

@@ -11,75 +11,109 @@ import {
 import { prisma } from "@workspace/database";
 import { TRPCError } from "@trpc/server";
 import logger from "../../logger";
-import { videoRouter } from "./video";
 import { env } from "@workspace/env";
 
 export const channelRouter = router({
-  video: videoRouter,
-  checkChannelSlug: protectedApiProcedure
-    .input(z.object({ slug: z.string() }))
-    .output(z.boolean())
-    .query(async ({ ctx, input }) => {
-      try {
-        const channel = await prisma.channel.findUnique({
-          where: {
-            slug: input.slug,
-          },
-        });
-        return !!channel;
-      } catch (error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "somthing went wrong while searching for channel",
-        });
-      }
-    }),
-  createChannel: protectedApiChannelProcedure
+  // video: videoRouter,
+  getVideos: publicProcedure
     .meta({
       openapi: {
-        method: "POST",
-        path: "/channel",
-        summary: "Create Channel",
-        description: "Create Channel",
+        method: "GET",
+        path: "/channel/{channel_id}/video",
+        summary: "Get all videos of the channel",
         protect: true,
-        tags: ["Channel"],
+        tags: ["Channel", "video"],
       },
     })
     .input(
       z.object({
-        slug: z.string(),
-        name: z.string(),
-        description: z.string().optional(),
+        channel_id: z.string(),
+        page: z.number().default(1),
+        limit: z.number().default(10),
       }),
     )
     .output(
       z.object({
-        id: z.string(),
-        name: z.string(),
-        slug: z.string(),
+        videos: z.array(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            video_type: z.enum(["PUBLIC", "PRIVATE", "UNLISTED"]),
+            view_count: z.number(),
+            description: z.string(),
+            thumbnail_s3_path: z.string().optional(),
+            dislike_count: z.number(),
+            like_count: z.number(),
+            is_banned: z.boolean(),
+            is_deleted: z.boolean(),
+            is_published: z.boolean(),
+            is_ready: z.boolean(),
+            channel_id: z.string(),
+          }),
+        ),
+        total: z.number(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      if (ctx.channel) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Channel already exists",
-        });
-      }
-      const channel = await prisma.channel.create({
-        data: {
-          name: input.name,
-          slug: input.name,
-          user_id: ctx.session.user.id,
-          description: input.description,
+    .query(async ({ ctx, input }) => {
+      const channel = await prisma.channel.findUnique({
+        where: {
+          id: input.channel_id,
         },
       });
-      return {
-        id: channel.id,
-        name: channel.name,
-        slug: channel.slug,
+      if (!channel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Channel not found",
+        });
+      }
+      const is_creater = channel.user_id == ctx.session?.user.id;
+      const whereCondition: any = {
+        channel_id: channel.id,
+        is_deleted: false,
       };
+      if (!is_creater) {
+        (whereCondition.is_banned = false),
+          (whereCondition.is_uploaded = true),
+          (whereCondition.is_ready = true),
+          (whereCondition.is_published = true);
+      }
+      try {
+        const videos = await prisma.video.findMany({
+          where: whereCondition,
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+        });
+        const total = await prisma.video.count({
+          where: whereCondition,
+        });
+
+        return {
+          total,
+          videos: videos.map(v => ({
+            id: v.id,
+            title: v.title,
+            video_type: v.video_type as "PUBLIC" | "PRIVATE" | "UNLISTED",
+            view_count: Number(v.view_count),
+            description: v.description,
+            thumbnail_s3_path: v.thumbnail_s3_path?.key || "",
+            dislike_count: Number(v.dislike_count),
+            like_count: Number(v.like_count),
+            is_banned: v.is_banned,
+            is_deleted: v.is_deleted,
+            is_published: v.is_published,
+            is_ready: v.is_ready,
+            channel_id: v.channel_id,
+          })),
+        };
+      } catch (error) {
+        logger.error("channel.video.getMyVideos", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `something went wrong while fetching videos`,
+        });
+      }
     }),
+  
   getChannel: publicProcedure
     .meta({
       openapi: {
@@ -115,6 +149,46 @@ export const channelRouter = router({
           message: "Channel not found",
         });
       }
+      if (ctx.session?.user.id) {
+        try {
+          const alreadyView = await prisma.channelView.findUnique({
+            where: {
+              channel_id_user_id: {
+                channel_id: input.id,
+                user_id: ctx.session.user.id,
+              },
+            }
+          })
+  
+          if (!alreadyView) {
+            await prisma.$transaction([
+              prisma.channel.update({
+                where: {
+                  id: input.id,
+                },
+                data: {
+                  total_views: {
+                    increment: 1,
+                  },
+                },
+              }),
+              prisma.channelView.create({
+                data: {
+                  channel_id: input.id,
+                  user_id: ctx.session.user.id,
+                }
+              })
+            ])
+          }
+        } catch (error) {
+          logger.error("channel.get channel view count increment failed", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Something went wrong while fetching channel",
+          });
+          
+        }
+      }
       return {
         id: channel.id,
         name: channel.name,
@@ -125,50 +199,4 @@ export const channelRouter = router({
         total_views: channel.total_views,
       };
     }),
-  deleteChannel: protectedApiChannelProcedure.input(z.object({})).output(z.string().optional()).mutation(async ({ ctx }) => {
-    if (!ctx.channel) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Channel not found",
-      });
-    }
-    try {
-      await prisma.$transaction([
-        prisma.video.updateMany({
-          data: {
-            is_deleted: true,
-            delete_reason: "Channel Deleted",
-          },
-          where: {
-            channel_id: ctx.channel.id,
-          },
-        }),
-        prisma.channel.delete({
-          where: {
-            id: ctx.channel.id,
-          },
-        }),
-        prisma.deletedChannel.create({
-          data: {
-            channel_id: ctx.channel.id,
-            user_id: ctx.channel.user_id,
-            name: ctx.channel.name,
-            slug: ctx.channel.slug,
-            description: ctx.channel.description,
-            subscriber_count: ctx.channel.subscriber_count,
-            total_views: ctx.channel.total_views,
-            createdAt: ctx.channel.createdAt,
-            updatedAt: ctx.channel.updatedAt,
-          },
-        }),
-      ]);
-      return "channel deleted successfully";
-    } catch (error) {
-      logger.error("Error deleting channel", error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Something went wrong while deleting channel",
-      });
-    }
-  }),
 });

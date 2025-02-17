@@ -13,9 +13,11 @@ export const t = initTRPC
   .create({
     transformer: superjson,
     errorFormatter: ({ shape, error }) => ({
+      trpcError: error,
       ...shape,
       data: {
         ...shape.data,
+        message: error.message,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
       },
@@ -62,8 +64,8 @@ export const protectedApiProcedure = publicProcedure
         ctx: {
           // infers the `session` as non-nullable
           session: { ...ctx.session, user: {
-            id: "6798aecff8c7c3124ac34dd9",
-            email: "dhruv@chadasaniya.in",
+            id: "67b1e30eea1bfa84544f1756",
+            email: "chadasaniyadhruv@gmail.com",
           } },
           headers: ctx.headers
         },

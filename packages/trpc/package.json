@@ -7,7 +7,7 @@
   "type": "commonjs",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
     }
@@ -33,6 +33,7 @@
     "@workspace/env": "workspace:*",
     "@workspace/logger": "workspace:^",
     "@workspace/services": "workspace:^",
+    "bullmq": "^5.35.1",
     "express": "^4",
     "superjson": "^2.2.2",
     "swagger-ui-express": "^5.0.1",

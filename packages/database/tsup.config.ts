@@ -5,7 +5,7 @@ export default defineConfig(options => {
     return {
         entry: ["./src/index.ts", "./src/**/*.ts"], // Entry file
         noExternal: ["ioredis", "@ioredis"], // Bundle any package starting with `@example` and their dependencies
-        splitting: true,
+        // splitting: true,
         bundle: true,
         target: "node22",
         // format: ['esm'],

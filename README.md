@@ -1,31 +1,39 @@
-# shadcn/ui monorepo template
+# Video Streaming Platform
 
-This template is for creating a monorepo with shadcn/ui.
+A modern video streaming platform built with Next.js, Express, and MongoDB.
 
-## Usage
+## Features
 
-```bash
-pnpm dlx shadcn@latest init
-```
+- 🎥 Video upload and streaming
+- 👤 User authentication with Google OAuth
+- 💾 MongoDB for data persistence
+- 🚀 Redis caching for improved performance
+- ☁️ S3-compatible storage for video files
+- 🔍 ChromaDB for video search capabilities
+- 🎨 Modern UI with Tailwind CSS
 
-## Adding components
+## Tech Stack
 
-To add components to your app, run the following command at the root of your `web` app:
+- **Frontend**: Next.js, Tailwind CSS, shadcn/ui
+- **Backend**: Express.js, tRPC
+- **Database**: MongoDB
+- **Caching**: Redis
+- **Storage**: S3-compatible storage
+- **Authentication**: Google OAuth
+- **Search**: ChromaDB
+- **Development**: TypeScript, Turbo Repo, pnpm workspaces
 
-```bash
-pnpm dlx shadcn@latest add button -c apps/web
-```
+## Getting Started
 
-This will place the ui components in the `packages/ui/src/components` directory.
+### Prerequisites
 
-## Tailwind
+- Node.js >= 20
+- pnpm
+- MongoDB
+- Redis
+- S3-compatible storage (or local S3 server)
+- ChromaDB
 
-Your `tailwind.config.ts` and `globals.css` are already set up to use the components from the `ui` package.
+### Environment Setup
 
-## Using components
-
-To use the components in your app, import them from the `ui` package.
-
-```tsx
-import { Button } from "@workspace/ui/components/ui/button"
-```
+Create a `.env.local` file with the following variables:

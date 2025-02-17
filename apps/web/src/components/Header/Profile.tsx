@@ -17,12 +17,11 @@ import React from "react";
 import Link from "next/link";
 import { signIn, signOut } from "next-auth/react";
 import { trpc } from "@/trpc/client";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 const Profile = () => {
-  const {
-    data: user,
-    isLoading: isLoadingUser,
-    error,
-  } = trpc.user.getMe.useQuery({});
+  const user = useSelector((state: RootState) => state.user)
+  
 
   // if (error) {
   //   return (
@@ -31,6 +30,7 @@ const Profile = () => {
   //     </Button>
   //   );
   // }
+
 
   return (
     <DropdownMenu>
@@ -44,7 +44,7 @@ const Profile = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {/* {isLoadingUser ? () : (<>Hello, {user?.name}</>)} */}
-        {!isLoadingUser && !error ? (
+        {!user.isLoggedin == false? (
           <>
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />

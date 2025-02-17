@@ -21,6 +21,11 @@ const userZodObject = z.object({
 });
 
 export const userRouter = router({
+  isLogin: protectedApiProcedure.query(async ({ ctx }) => {
+    return {
+      isLoggedin: !!ctx.session.user,
+    };
+  }),
   getUser: protectedApiProcedure
     .meta({
       openapi: {
@@ -50,7 +55,7 @@ export const userRouter = router({
           return {
             id: user.id,
             name: user.name,
-            image: user.image ?? undefined,
+            image: user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.bucket}/${user.image.key}` : undefined,
             email: user.email,
             role: user.role as "ADMIN" | "USER",
             channel_id: user.channel_id ?? undefined,
@@ -78,7 +83,7 @@ export const userRouter = router({
       return {
         id: user.id,
         name: user.name,
-        image: !user.image?.startsWith("http") ?  `${env.S3_PUBLIC_ENDPOINT}/${user.image}`: user.image ?? undefined,
+        image: user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.bucket}/${user.image.key}` : undefined,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,
@@ -93,7 +98,6 @@ export const userRouter = router({
         path: "/user",
         protect: true,
         tags: ["User"],
-
       },
     })
     .input(z.void())
@@ -122,7 +126,8 @@ export const userRouter = router({
       return {
         id: user.id,
         name: user.name,
-        image: !user.image?.startsWith("http") ?  `${env.S3_PUBLIC_ENDPOINT}/${user.image}`: user.image ?? undefined,
+        // image: !user.image?.startsWith("http") ?  `${env.S3_PUBLIC_ENDPOINT}/${user.image}`: user.image ?? undefined,
+        image: user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.key}` : undefined,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,
@@ -155,7 +160,8 @@ export const userRouter = router({
       return {
         id: user.id,
         name: user.name,
-        image: user.image ?? undefined,
+        // image: user.image ?? undefined,
+        image: user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.bucket}/${user.image.key}` : undefined,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,
@@ -199,7 +205,8 @@ export const userRouter = router({
       return {
         id: user.id,
         name: user.name,
-        image: user.image ?? undefined,
+        // image: user.image ?? undefined,
+        image:user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.bucket}/${user.image.key}` : undefined,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,
@@ -219,7 +226,12 @@ export const userRouter = router({
     })
     .input(
       z.object({
-        image_name: z.string(),
+        image_name: z.string({
+          description: "image name with extension",
+        }),
+        image_size: z.number({
+          description: "image size in bytes (max 15MB)",
+        }),
       }),
     )
     .output(z.object({ url: z.string(), fileId: z.string() }))
@@ -244,9 +256,16 @@ export const userRouter = router({
         });
       }
       try {
+        if (input.image_size > (15 * 1024 * 1024)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Image size should be less than 15MB",
+          });
+        }
         const s3url = await customS3Uploader.generatePresignedUrl({
           bucket: env.S3_FILES_BUCKET,
           fileName: input.image_name,
+          maxSizeBytes: input.image_size,
           for: "avatar"
         });
         try {
@@ -323,7 +342,10 @@ export const userRouter = router({
               id: ctx.session.user.id,
             },
             data: {
-              image: `${avatarFile.key}`,
+              image: {
+                bucket: avatarFile.bucket,
+                key: avatarFile.key,
+              },
             },
           }),
           prisma.tempFileUpload.delete({
@@ -333,7 +355,13 @@ export const userRouter = router({
           }),
         ]);
         return;
-      } catch (error) {}
+      } catch (error) {
+        logger.error("users.updateImage", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "something went wrong with updating image",
+        });
+      }
     }),
   // video: videoRouter
   // t.middleware(async ({ next, path }) => {})

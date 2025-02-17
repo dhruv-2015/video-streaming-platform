@@ -8,6 +8,8 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { User, VideoOff } from "lucide-react";
 import VideoCart from "@/components/Home/videoCart";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 type Videos = {
   id: string | number
@@ -85,12 +87,15 @@ const mockVideos: Videos[] = [
 ];
 
 export default async function Home() {
+  const user = useSelector((state: RootState) => state.user);
   // const {data, isLoading} = await trpc.hello.useQuery("world");
   // const session = await auth();
+  // setTimeout(() => {  throw new Error("IDk lol")}, 1000);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {JSON.stringify(user)}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5  gap-4">
         {mockVideos.map(video => (
           <VideoCart key={video.id} video={video} />
         ))}
