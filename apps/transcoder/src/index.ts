@@ -3,7 +3,7 @@ import { VideoTranscoder, videoTranscoder } from "./transcoder";
 import { worker } from "./worker";
 
 async function main() {
-    await worker.run()
+    // await worker.run()
 }
 
 main().catch(err => {

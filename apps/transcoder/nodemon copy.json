@@ -1,0 +1,13 @@
+{
+  "watch": [
+    "../../packages/**/{dist,src}/**/*",
+    "src/**/*"
+  ],
+  "ext": "ts,tsx",
+  "exec": "tsup --onSuccess \"node dist/index.js\"",
+  "ignore": [
+    "dist",
+    "out",
+    "node_modules"
+  ]
+} 

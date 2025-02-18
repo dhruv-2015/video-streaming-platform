@@ -39,8 +39,9 @@ const expressAuthConfig: ExpressAuthConfig = {
   trustHost: true,
   callbacks: {
     redirect: ({ url, baseUrl }) => {
+      env.PUBLIC_URL
       console.log(url, "url");
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (url.startsWith("/")) return `${env.PUBLIC_URL}${url}`;
 
       return url;
     },

@@ -251,5 +251,5 @@ export const channelRouter = router({
           totalVideos: totalVideos
         }
       };
-    })
+    }),
 });

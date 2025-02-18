@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import NextAuth from 'next-auth'
 import { authConfig } from './auth.config'
+import { trpcServerClient } from './trpc/server'
 
 
 
@@ -20,6 +21,17 @@ export default auth(async function middleware(request: NextRequest) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
+  if (session && pathname.startsWith('/studio/')) {
+    const user = await trpcServerClient.user.getMe.query()
+    if (!user.channel_id) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/studio'
+      return NextResponse.redirect(url)
+    }
+    
+  }
+
+
 
   // Only handle paths starting with /api/
   if (pathname.startsWith('/api/')) {

@@ -101,11 +101,11 @@ class CustomS3Uploader {
         `uploads/video/${Date.now()}/${Math.random() * 10000000000000000}/${options.fileName}`;
     }
 
-    if (options.for === "temp") {
+    options.expiresIn = options.expiresIn ?? 60 * 60; // 1 day
       options.path =
         options.path ??
         `uploads/temp/${Date.now()}/${Math.random() * 10000000000000000}/${options.fileName}`;
-    }
+
 
     const command = new PutObjectCommand({
       Bucket: options.bucket,

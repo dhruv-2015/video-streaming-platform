@@ -22,12 +22,13 @@ import { Button } from "@workspace/ui/components/button";
 import Link from "next/link";
 // This is sample data.
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar() {
 
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar,setOpen } = useSidebar();
+  // React.useEffect(() => {setOpen(false);},[]);
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

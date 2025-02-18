@@ -99,40 +99,40 @@ enum VideoType {
 }
 
 model Video {
-  id                         String             @id @default(auto()) @map("_id") @db.ObjectId
-  channel_id                 String             @db.ObjectId
-  channel                    Channel            @relation(fields: [channel_id], references: [id])
-  is_ready                   Boolean            @default(false)
-  is_deleted                 Boolean            @default(false)
-  delete_reason              String?
-  is_banned                  Boolean            @default(false)
-  banned_reason              String?
-  error_message              String?
-  title                      String
-  description                String             @default("")
-  thumbnail_s3_path          S3File?
-  avalable_thumbnail_s3_path S3File[]
-  view_count                 BigInt             @default(0)
-  like_count                 BigInt             @default(0)
-  dislike_count              BigInt             @default(0)
-  video_type                 VideoType          @default(PUBLIC)
-  is_published               Boolean            @default(false)
-  published_at               DateTime           @default(now())
-  createdAt                  DateTime           @default(now())
-  updatedAt                  DateTime           @updatedAt
-  orignal_file               S3File?
-  is_uploaded                Boolean            @default(false)
-  VideoFile                  VideoFile?
-  VideoView                  VideoView[]        @ignore
-  VideoLike                  VideoLike[]        @ignore
-  VideoDissLike              VideoDissLike[]    @ignore
-  VideoComment               VideoComment[]
-  video_tags_id              String[]           @db.ObjectId
-  VideoTags                  VideoTags[]        @relation(fields: [video_tags_id], references: [id])
-  WatchHistory               WatchHistory[]     @ignore
-  WarchLaterVideo            WarchLaterVideo[]  @ignore
-  PlaylistVideo              PlaylistVideo[]
-  VideoTranscoding           VideoTranscoding?
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id         String            @db.ObjectId
+  channel            Channel           @relation(fields: [channel_id], references: [id])
+  is_ready           Boolean           @default(false)
+  is_deleted         Boolean           @default(false)
+  delete_reason      String?
+  is_banned          Boolean           @default(false)
+  banned_reason      String?
+  error_message      String?
+  title              String
+  description        String            @default("")
+  thumbnail          S3File?
+  avalable_thumbnail S3File[]
+  view_count         BigInt            @default(0)
+  like_count         BigInt            @default(0)
+  dislike_count      BigInt            @default(0)
+  video_type         VideoType         @default(PUBLIC)
+  is_published       Boolean           @default(false)
+  published_at       DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  orignal_file       S3File?
+  is_uploaded        Boolean           @default(false)
+  VideoFile          VideoFile?
+  VideoView          VideoView[]       @ignore
+  VideoLike          VideoLike[]       @ignore
+  VideoDissLike      VideoDissLike[]   @ignore
+  VideoComment       VideoComment[]
+  video_tags_id      String[]          @db.ObjectId
+  VideoTags          VideoTags[]       @relation(fields: [video_tags_id], references: [id])
+  WatchHistory       WatchHistory[]    @ignore
+  WarchLaterVideo    WarchLaterVideo[] @ignore
+  PlaylistVideo      PlaylistVideo[]
+  VideoTranscoding   VideoTranscoding?
 }
 
 type VideoSubTitle {
@@ -140,6 +140,7 @@ type VideoSubTitle {
   url       S3File
   label     String
   type      String
+  default   Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 
@@ -150,7 +151,6 @@ type IndividualVideoTracks {
   bitrate   Int
   codec     String
   duration  Int
-  size      Int
   createdAt DateTime @default(now())
 }
 
@@ -158,10 +158,10 @@ type IndividualAudioTracks {
   url       S3File
   language  String
   label     String
+  channels  Int
   codec     String
   bitrate   Int
   duration  Int
-  size      Int
   createdAt DateTime @default(now())
 }
 

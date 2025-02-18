@@ -28,6 +28,7 @@ export const channelRouter = router({
     .input(
       z.object({
         channel_id: z.string(),
+        query: z.string().default(""),
         page: z.number().default(1),
         limit: z.number().default(10),
       }),
@@ -41,17 +42,23 @@ export const channelRouter = router({
             video_type: z.enum(["PUBLIC", "PRIVATE", "UNLISTED"]),
             view_count: z.number(),
             description: z.string(),
-            thumbnail_s3_path: z.string().optional(),
+            thumbnail: z.string(),
             dislike_count: z.number(),
             like_count: z.number(),
+            comment_count: z.number(),
             is_banned: z.boolean(),
             is_deleted: z.boolean(),
             is_published: z.boolean(),
             is_ready: z.boolean(),
             channel_id: z.string(),
+            created_at: z.string(),
+            published_at: z.string().nullable(),
           }),
         ),
-        total: z.number(),
+        total_page: z.number(),
+        total_videos: z.number(),
+        next_page: z.number().nullable(),
+        prev_page: z.number().nullable(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -70,39 +77,60 @@ export const channelRouter = router({
       const whereCondition: any = {
         channel_id: channel.id,
         is_deleted: false,
+        is_uploaded: true,
       };
       if (!is_creater) {
         (whereCondition.is_banned = false),
-          (whereCondition.is_uploaded = true),
           (whereCondition.is_ready = true),
           (whereCondition.is_published = true);
+      }
+      if (input.query != "") {
+        whereCondition.title = {
+          contains: input.query,
+          mode: "insensitive",
+        }
       }
       try {
         const videos = await prisma.video.findMany({
           where: whereCondition,
           skip: (input.page - 1) * input.limit,
           take: input.limit,
+          include: {
+            _count: {
+              select: {
+                VideoComment: true,
+              }
+            }
+          }
         });
         const total = await prisma.video.count({
           where: whereCondition,
         });
-
+        const total_page = Math.ceil(total / input.limit);
         return {
-          total,
+          total_page,
+          total_videos: total,
+          next_page: input.page < total ? input.page + 1 : null,
+          prev_page: input.page > 1 ? input.page - 1 : null,
           videos: videos.map(v => ({
             id: v.id,
             title: v.title,
             video_type: v.video_type as "PUBLIC" | "PRIVATE" | "UNLISTED",
             view_count: Number(v.view_count),
             description: v.description,
-            thumbnail_s3_path: v.thumbnail_s3_path?.key || "",
+            thumbnail: v.thumbnail
+              ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${v.thumbnail.key}`
+              : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
             dislike_count: Number(v.dislike_count),
             like_count: Number(v.like_count),
+            comment_count: v._count.VideoComment,
             is_banned: v.is_banned,
             is_deleted: v.is_deleted,
             is_published: v.is_published,
             is_ready: v.is_ready,
             channel_id: v.channel_id,
+            created_at: v.createdAt.toISOString(),
+            published_at: v.published_at?.toISOString() ?? null,
           })),
         };
       } catch (error) {
@@ -113,7 +141,7 @@ export const channelRouter = router({
         });
       }
     }),
-  
+
   getChannel: publicProcedure
     .meta({
       openapi: {
@@ -157,9 +185,9 @@ export const channelRouter = router({
                 channel_id: input.id,
                 user_id: ctx.session.user.id,
               },
-            }
-          })
-  
+            },
+          });
+
           if (!alreadyView) {
             await prisma.$transaction([
               prisma.channel.update({
@@ -176,17 +204,19 @@ export const channelRouter = router({
                 data: {
                   channel_id: input.id,
                   user_id: ctx.session.user.id,
-                }
-              })
-            ])
+                },
+              }),
+            ]);
           }
         } catch (error) {
-          logger.error("channel.get channel view count increment failed", error);
+          logger.error(
+            "channel.get channel view count increment failed",
+            error,
+          );
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "Something went wrong while fetching channel",
           });
-          
         }
       }
       return {

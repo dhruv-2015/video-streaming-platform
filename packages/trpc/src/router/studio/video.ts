@@ -10,7 +10,7 @@ import path from "path";
 import { z } from "zod";
 
 export const videoRouter = router({
-    createVideo: protectedApiChannelProcedure
+  createVideo: protectedApiChannelProcedure
     .meta({
       openapi: {
         method: "POST",
@@ -164,6 +164,54 @@ export const videoRouter = router({
         });
       }
     }),
+    updateVideo: protectedApiChannelProcedure
+    .input(z.object({
+      video_id: z.string(),
+      title: z.string(),
+      description: z.string(),
+    })).mutation(async ({ ctx, input }) => {
+      if (!ctx.channel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Channel not found",
+        });
+      }
+
+      try {
+        const video = await prisma.video.findUnique({
+          where: {
+            id: input.video_id,
+            channel_id: ctx.channel.id,
+          }
+        })
+        if (!video) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Video not found",
+          });
+        }
+        await prisma.video.update({
+          where: {
+            id: input.video_id,
+            channel_id: ctx.channel.id,
+          },
+          data: {
+            title: input.title,
+            description: input.description,
+          },
+        });
+        return;
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        logger.error("channel.video.updateVideo", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `something went wrong while updating video`,
+        });
+      }
+    }),
 
   getPresignedUrlForVideo: protectedApiChannelProcedure
     .meta({
@@ -191,6 +239,7 @@ export const videoRouter = router({
     .output(
       z.object({
         url: z.string(),
+        fileId: z.string(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -224,8 +273,8 @@ export const videoRouter = router({
               bucket: video.orignal_file.bucket,
               expires: new Date(),
               key: video.orignal_file.key,
-            }
-          })
+            },
+          });
         }
       } catch (error) {
         if (error instanceof TRPCError) {
@@ -237,36 +286,35 @@ export const videoRouter = router({
           message: "something went wrong while getting video",
         });
       }
-      if (input.file_size > 10 * 1024 * 1024 * 1024) {
+      if (input.file_size > 5 * 1024 * 1024 * 1024) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Video file size should be less than 10GB",
         });
       }
       try {
-        const res = await prisma.$transaction(async p => {
-          const s3url = await customS3Uploader.generatePresignedUrl({
-            bucket: env.S3_VIDEO_BUCKET,
-            fileName: input.file_name,
-            maxSizeBytes: input.file_size,
-            for: "video",
-          });
-          await p.video.update({
-            where: {
-              id: input.video_id,
-            },
-            data: {
-              orignal_file: {
-                bucket: s3url.s3Data.bucket,
-                key: s3url.s3Data.key,
-              },
-            },
-          });
-          return {
-            url: s3url.url,
-          };
+        const s3url = await customS3Uploader.generatePresignedUrl({
+          bucket: env.S3_VIDEO_BUCKET,
+          fileName: input.file_name,
+          maxSizeBytes: input.file_size,
+          expiresIn: 24 * 60 * 60, // 24 hours
+          for: "temp",
         });
-        return res;
+        const file = await prisma.tempFileUpload.create({
+          data: {
+            bucket: s3url.s3Data.bucket,
+            key: s3url.s3Data.key,
+            expires: s3url.s3Data.expire,
+            // orignal_file: {
+            //   bucket: s3url.s3Data.bucket,
+            //   key: s3url.s3Data.key,
+            // },
+          },
+        });
+        return {
+          url: s3url.url,
+          fileId: file.id,
+        };
       } catch (error) {
         logger.error("channel.video.getPresignedUrlForVideo", error);
         throw new TRPCError({
@@ -288,6 +336,7 @@ export const videoRouter = router({
     .input(
       z.object({
         video_id: z.string(),
+        fileId: z.string(),
       }),
     )
     .output(z.string().optional())
@@ -298,6 +347,7 @@ export const videoRouter = router({
           message: "Channel not found",
         });
       }
+      
       try {
         const video = await prisma.video.findUnique({
           where: {
@@ -316,17 +366,25 @@ export const videoRouter = router({
             message: "Video is already uploaded",
           });
         }
-        if (!video.orignal_file) {
+        const videoFile = await prisma.tempFileUpload.findUnique({
+          where: {
+            id: input.fileId,
+          },
+        });
+        
+        if (!videoFile) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Video file not found. please upload video first",
+            message:
+            "Video file not found on server. please upload video first",
           });
         }
         try {
           const res = await customS3Uploader.checkFileExists({
-            bucket: video.orignal_file.bucket,
-            key: video.orignal_file.key,
+            bucket: videoFile.bucket,
+            key: videoFile.key,
           });
+          console.log("verifyVideoUpload debug");
           if (res) {
             try {
               await prisma.$transaction(async p => {
@@ -335,17 +393,29 @@ export const videoRouter = router({
                     id: input.video_id,
                   },
                   data: {
+                    orignal_file: {
+                      bucket: env.S3_VIDEO_BUCKET,
+                      key: `video/${video.id}${path.extname(videoFile.key)}`,
+                    },
                     is_uploaded: true,
                   },
                 });
-                console.log("transcoding video");
-                
+                await customS3Uploader.copyObject(
+                  {
+                    bucket: videoFile.bucket,
+                    key: videoFile.key,
+                  },
+                  {
+                    bucket: env.S3_VIDEO_BUCKET,
+                    key: `video/${video.id}${path.extname(videoFile.key)}`,
+                  },
+                );
+
                 await transcodeVideo(input.video_id, {
-                  bucket: video.orignal_file?.bucket!,
-                  key: video.orignal_file?.key!
-                })
+                  bucket: env.S3_VIDEO_BUCKET,
+                  key: `video/${video.id}${path.extname(videoFile.key)}`,
+                });
               });
-              
             } catch (error) {
               logger.error("channel.video.verifyVideoUpload", error);
               throw new TRPCError({
@@ -422,12 +492,12 @@ export const videoRouter = router({
           message: "Video is not uploaded. please upload video first",
         });
       }
-      if (!video.is_ready) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Video is not ready yet. please wait",
-        });
-      }
+      // if (!video.is_ready) {
+      //   throw new TRPCError({
+      //     code: "BAD_REQUEST",
+      //     message: "Video is not ready yet. please wait",
+      //   });
+      // }
       try {
         const newVid = await prisma.video.update({
           where: {
@@ -435,13 +505,14 @@ export const videoRouter = router({
           },
           data: {
             is_published: true,
+            published_at: new Date(),
           },
           include: {
             VideoTags: {
               select: {
                 tag: true,
               },
-            } 
+            },
           },
         });
 
@@ -462,15 +533,15 @@ export const videoRouter = router({
       }
     }),
   deleteVideo: protectedApiChannelProcedure
-  .meta({
-    openapi: {
-      method: "DELETE",
-      path: "/channel/video/{video_id}",
-      protect: true,
-      summary: "Delete video",
-      tags: ["Channel", "video"],
-    }
-  })
+    .meta({
+      openapi: {
+        method: "DELETE",
+        path: "/channel/video/{video_id}",
+        protect: true,
+        summary: "Delete video",
+        tags: ["Channel", "video"],
+      },
+    })
     .input(
       z.object({
         video_id: z.string(),
@@ -495,6 +566,7 @@ export const videoRouter = router({
             delete_reason: `User deleted on (${new Date().toISOString()})`,
           },
         });
+        await recomandationSystem.deleteVideo(video.id);
         return "Video deleted successfully";
       } catch (error) {
         throw new TRPCError({
@@ -504,7 +576,7 @@ export const videoRouter = router({
       }
     }),
 
-    getPreSignedUrlForThumbnail: protectedApiChannelProcedure
+  getPreSignedUrlForThumbnail: protectedApiChannelProcedure
     .meta({
       openapi: {
         method: "GET",
@@ -512,17 +584,21 @@ export const videoRouter = router({
         protect: true,
         summary: "Get presigned url for video thumbnail",
         tags: ["Channel", "video"],
-      }
+      },
     })
-    .input(z.object(({
-      video_id: z.string(),
-      file_name: z.string(),
-      file_size: z.number()
-    })))
-    .output(z.object({
-      url: z.string(),
-      fileId: z.string()
-    }))
+    .input(
+      z.object({
+        video_id: z.string(),
+        file_name: z.string(),
+        file_size: z.number(),
+      }),
+    )
+    .output(
+      z.object({
+        url: z.string(),
+        fileId: z.string(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (!ctx.channel) {
         throw new TRPCError({
@@ -571,145 +647,267 @@ export const videoRouter = router({
         data: {
           bucket: s3url.s3Data.bucket,
           expires: s3url.s3Data.expire,
-          key: s3url.s3Data.key
-        }
-      })
+          key: s3url.s3Data.key,
+        },
+      });
       return {
         url: s3url.url,
-        fileId: file.id
-      }
+        fileId: file.id,
+      };
     }),
-  
+
   uploadThumbnail: protectedApiChannelProcedure
-  .meta({
-    openapi: {
-      method: "PATCH",
-      path: "/channel/video/{video_id}/thumbnail",
-      protect: true,
-      summary: "Upload thumbnail for video",
-      tags: ["Channel", "video"]
-    }
-  })
-  .input(z.object({
-    video_id: z.string(),
-    fileId: z.string(),
-  }))
-  .output(z.void())
-  .mutation(async ({ ctx, input }) => {
-    if (!ctx.channel) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Channel not found",
-      });
-    }
-    try {
-      const file = await prisma.tempFileUpload.findUnique({
-        where: {
-          id: input.fileId
-        }
-      })
-      if (!file) {
+    .meta({
+      openapi: {
+        method: "PATCH",
+        path: "/channel/video/{video_id}/thumbnail",
+        protect: true,
+        summary: "Upload thumbnail for video",
+        tags: ["Channel", "video"],
+      },
+    })
+    .input(
+      z.object({
+        video_id: z.string(),
+        fileId: z.string(),
+      }),
+    )
+    .output(z.void())
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.channel) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "File not found",
+          message: "Channel not found",
         });
       }
-      const video = await prisma.video.findUnique({
-        where: {
-          id: input.video_id,
-          channel_id: ctx.channel.id,
+      try {
+        const file = await prisma.tempFileUpload.findUnique({
+          where: {
+            id: input.fileId,
+          },
+        });
+        if (!file) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "File not found",
+          });
         }
-      })
-  
+        const video = await prisma.video.findUnique({
+          where: {
+            id: input.video_id,
+            channel_id: ctx.channel.id,
+          },
+        });
+
+        if (!video) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Video not found",
+          });
+        }
+
+        await customS3Uploader.copyObject(
+          {
+            bucket: file.bucket,
+            key: file.key,
+          },
+          {
+            bucket: env.S3_VIDEO_BUCKET,
+            key: `thumbnail/${video.id}.${path.extname(file.key)}`,
+          },
+        );
+
+        await prisma.video.update({
+          data: {
+            thumbnail: {
+              bucket: env.S3_VIDEO_BUCKET,
+              key: `thumbnail/${video.id}${path.extname(file.key)}`,
+            },
+          },
+          where: {
+            id: video.id,
+          },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        logger.error("channel.video.uploadThumbnail", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "something went wrong while uploading thumbnail",
+        });
+      }
+    }),
+
+  deleteThumbnail: protectedApiChannelProcedure
+    .meta({
+      openapi: {
+        method: "DELETE",
+        path: "/channel/video/{video_id}/thumbnail",
+        protect: true,
+        summary: "Delete thumbnail for video",
+        tags: ["Channel", "video"],
+      },
+    })
+    .input(
+      z.object({
+        video_id: z.string(),
+      }),
+    )
+    .output(z.void())
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.channel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Channel not found",
+        });
+      }
+      const video = await prisma.video
+        .findUnique({
+          where: {
+            id: input.video_id,
+            channel_id: ctx.channel.id,
+          },
+        })
+        .catch(error => {
+          logger.error("channel.video.deleteThumbnail", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "something went wrong while getting video",
+          });
+        });
       if (!video) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Video not found",
-        })
-      }
-  
-      await customS3Uploader.copyObject({
-        bucket: file.bucket,
-        key: file.key,
-      }, {
-        bucket: env.S3_VIDEO_BUCKET,
-        key: `thumbnail/${video.id}.${path.extname(file.key)}`
-      })
-  
-      await prisma.video.update({
-        data: {
-          thumbnail_s3_path: {
-            bucket: env.S3_VIDEO_BUCKET,
-            key: `thumbnail/${video.id}${path.extname(file.key)}`
-          }
-        },
-        where: {
-          id: video.id
-        }
-      })
-    } catch (error) {
-      if (error instanceof TRPCError) {
-        throw error;
-      }
-      logger.error("channel.video.uploadThumbnail", error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "something went wrong while uploading thumbnail",
-      });
-    }
-  }),
-
-  deleteThumbnail: protectedApiChannelProcedure
-  .input(z.object({
-    video_id: z.string(),
-  }))
-  .mutation(async ({ ctx, input }) => {
-    if (!ctx.channel) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Channel not found",
-      });
-    }
-    const video = await prisma.video.findUnique({
-      where: {
-        id: input.video_id,
-        channel_id: ctx.channel.id,
-      }
-    }).catch(error => {
-      logger.error("channel.video.deleteThumbnail", error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "something went wrong while getting video",
-      })
-    })
-    if (!video) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Video not found",
-      })
-    }
-    if (video.thumbnail_s3_path) {
-      try {
-        await prisma.$transaction(async p => {
-          await p.video.update({
-            data: {
-              thumbnail_s3_path: null
-            },
-            where: {
-              id: video.id
-            }
-          })
-          await customS3Uploader.deleteFile(video.thumbnail_s3_path?.bucket!, video.thumbnail_s3_path?.key!)
-        })
-      } catch (error) {
-        logger.error("channel.video.deleteThumbnail", error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "something went wrong while deleting thumbnail",
         });
       }
-    }
-    
-  })
+      if (video.thumbnail) {
+        try {
+          await prisma.$transaction(async p => {
+            await p.video.update({
+              data: {
+                thumbnail: null,
+              },
+              where: {
+                id: video.id,
+              },
+            });
+            await customS3Uploader.deleteFile(
+              video.thumbnail?.bucket!,
+              video.thumbnail?.key!,
+            );
+          });
+        } catch (error) {
+          logger.error("channel.video.deleteThumbnail", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "something went wrong while deleting thumbnail",
+          });
+        }
+      }
+    }),
 
-})
+  // getVideos: protectedApiChannelProcedure
+  //   .input(
+  //     z.object({
+  //       page: z.number().default(1),
+  //       limit: z.number().default(10),
+  //     }),
+  //   )
+  //   .output(
+  //     z.object({
+  //       videos: z.array(
+  //         z.object({
+  //           id: z.string(),
+  //           title: z.string(),
+  //           description: z.string(),
+  //           thumbnail: z.string(),
+  //           channel_id: z.string(),
+  //           video_type: z.string(),
+  //           created_at: z.date(),
+  //           published_at: z.date(),
+  //           view_count: z.number(),
+  //           like_count: z.number(),
+  //           dislike_count: z.number(),
+  //           comments: z.number(),
+  //         }),
+  //       ),
+  //       total_videos: z.number(),
+  //       next_page: z.number().nullable(),
+  //       prev_page: z.number().nullable(),
+  //       total_page: z.number(),
+  //     }),
+  //   )
+  //   .query(async ({ ctx,input }) => {
+  //     if (!ctx.channel) {
+  //       throw new TRPCError({
+  //         code: "NOT_FOUND",
+  //         message: "Channel not found",
+  //       });
+  //     }
+  //     const totalVideo = await prisma.video.count({
+  //       where: {
+  //         channel_id: ctx.channel.id,
+  //         is_deleted: false,
+  //         is_uploaded: true,
+  //       },
+  //     });
+  //     const videos = await prisma.video.findMany({
+  //       where: {
+  //         channel_id: ctx.channel.id,
+  //         is_deleted: false,
+  //         is_uploaded: true,
+  //       },
+  //       orderBy: {
+  //         published_at: "desc",
+  //       },
+  //       select: {
+  //         id: true,
+  //         title: true,
+  //         description: true,
+  //         thumbnail: true,
+  //         like_count: true,
+  //         channel_id: true,
+  //         video_type: true,
+  //         createdAt: true,
+  //         published_at: true,
+  //         view_count: true,
+  //         dislike_count: true,
+  //         _count: {
+  //           select: {
+  //             VideoComment: true,
+  //           },
+  //         },
+  //       },
+  //     });
+  //     const total_page = Math.ceil(totalVideo / input.limit);
+  //     return {
+  //       total_page,
+  //       total_videos: totalVideo,
+  //       next_page: input.page < totalVideo ? input.page + 1 : null,
+  //       prev_page: input.page > 1 ? input.page - 1 : null,
+  //       videos: videos.map(video => ({
+  //         channel_id: video.channel_id,
+  //         comments: video._count.VideoComment,
+  //         created_at: video.createdAt,
+  //         description: video.description,
+  //         dislike_count: Number(video.dislike_count),
+  //         id: video.id,
+  //         like_count: Number(video.like_count),
+  //         published_at: video.published_at,
+  //         thumbnail: video.thumbnail ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.thumbnail}` : `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
+  //         title: video.title,
+  //         video_type  : video.video_type.toString(),
+  //         view_count: Number(video.view_count),
+  //       }))
+  //     };
+
+  //     // const comments = await prisma.videoComment.count({
+  //     //   where: {
+  //     //     video_id: videos.id
+  //     //   }
+  //     // })
+  //   }),
+});

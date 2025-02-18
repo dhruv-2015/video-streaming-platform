@@ -2,9 +2,6 @@ import { exec, execSync, spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import logger from "./logger";
-import { redis } from "@workspace/database";
-import { customS3Uploader } from "@workspace/aws";
-import { env } from "@workspace/env";
 
 interface FFmpegProgress {
   percent: number;
@@ -87,6 +84,7 @@ interface FinalMetadata {
     name: string;
     width: number;
     profile: string;
+    codec: string;
     height: number;
     level: number;
   }[];
@@ -138,10 +136,7 @@ const MAX_SEGMENTS_PER_PLAYLIST = 0; // 0 means include all segments for VOD
 class FfmpegWrapper {
   // private ffmpegPath: string;
 
-  constructor(
-    private ffmpegPath: string,
-    private packagerPath: string,
-  ) {
+  constructor(private ffmpegPath: string, private packagerPath: string) {
     // this.ffmpegPath = ffmpegPath;
   }
 
@@ -153,7 +148,7 @@ class FfmpegWrapper {
    */
   public async execute(
     options: string[],
-    events: FFmpegEvents = {},
+    events: FFmpegEvents = {}
   ): Promise<void> {
     const { onStart, onProgress, onEnd, onError, abortController, cacheId } =
       events;
@@ -305,37 +300,42 @@ class FfmpegWrapper {
   public async pakage(options: string[], events: FFmpegEvents = {}) {
     const { onStart, onEnd, onError, abortController } = events;
     return new Promise<void>((resolve, reject) => {
-      
-
-      const process = spawn(this.packagerPath, options, {
-        windowsHide: true,
-        signal: abortController?.signal,
-      });
-
       if (onStart) {
         onStart(`${this.packagerPath} ${options.join(" ")}`);
       }
-      if (process.stderr) {
-        process.stderr.setEncoding("utf8");
-      }
-
-      // Handle process completion
-      process.on("exit", (code: number | null) => {
-        if (code === 0) {
-          if (onEnd) onEnd();
-          resolve();
-        } else {
-          const error = new Error(`FFmpeg process exited with code ${code}`);
-          if (onError) onError(error);
-          reject(error);
-        }
-      });
-
-      // Handle process errors
-      process.on("error", (error: Error) => {
+      try {
+        const process = execSync(this.packagerPath + " " + options.map(arg => `"${arg}"`).join(" ").replace(/\\/g, "/"));
+        console.log(process.toString());
+        
+        resolve();
+        return;
+      } catch (error: any) {
+        console.log("pakage error", error);
+        
         if (onError) onError(error);
         reject(error);
-      });
+        return;
+      }
+      resolve();
+
+
+      // Handle process completion
+      // process.on("exit", (code: number | null) => {
+      //   if (code === 0) {
+      //     if (onEnd) onEnd();
+      //     resolve();
+      //   } else {
+      //     const error = new Error(`packager process exited with code ${code}`);
+      //     if (onError) onError(error);
+      //     reject(error);
+      //   }
+      // });
+
+      // // Handle process errors
+      // process.on("error", (error: Error) => {
+      //   if (onError) onError(error);
+      //   reject(error);
+      // });
     });
   }
 }
@@ -354,7 +354,7 @@ interface TranscodeOptions {
     args: string[];
     ffmpeg: string;
   }) => void;
-  pakagerStart?: () => void;
+  pakagerStart?: (command: string) => void;
   pakagerEnd?: () => void;
   pakagerError?: (error: Error) => void;
   onEnd?: () => void;
@@ -362,14 +362,16 @@ interface TranscodeOptions {
 }
 
 interface TranscodeResult {
-  duration: number,
+  duration: number;
+  audio_channels: number;
+  subtitle_channels: number;
   streams: FinalMetadata & {
     hls: string;
     storyboard: {
       image: string;
       vtt: string;
-    }
-  }
+    };
+  };
 }
 
 export class VideoTranscoder {
@@ -379,7 +381,7 @@ export class VideoTranscoder {
     private ffmpeg: string = "ffmpeg",
     private packager: string = "packager",
     private SEGMENT_DURATION = 6,
-    private MAX_SEGMENTS_PER_PLAYLIST = 0, // 0 means include all segments for VOD set somthing for live videos
+    private MAX_SEGMENTS_PER_PLAYLIST = 0 // 0 means include all segments for VOD set somthing for live videos
   ) {
     this.ffmpegWrapper = new FfmpegWrapper(ffmpeg, packager);
   }
@@ -406,11 +408,11 @@ export class VideoTranscoder {
   private findBestResolution(
     originalWidth: number,
     originalHeight: number,
-    tolerance: number = 0.05,
+    tolerance: number = 0.05
   ): { resolution: string; spec: ResolutionSpec } {
     // Sort resolutions from highest to lowest
     const sortedResolutions = Object.entries(RESOLUTIONS).sort(
-      (a, b) => b[1].height - a[1].height,
+      (a, b) => b[1].height - a[1].height
     );
 
     // Find the first resolution that's smaller than or equal to the original dimensions
@@ -418,7 +420,7 @@ export class VideoTranscoder {
     const match = sortedResolutions.find(
       ([_, spec]) =>
         originalHeight >= spec.height * (1 - tolerance) ||
-        originalWidth >= spec.width * (1 - tolerance),
+        originalWidth >= spec.width * (1 - tolerance)
     );
 
     // If no match found, return the lowest resolution
@@ -429,7 +431,7 @@ export class VideoTranscoder {
   private calculateNewResolution(
     originalWidth: number,
     originalHeight: number,
-    targetRes: ResolutionSpec,
+    targetRes: ResolutionSpec
   ): CalculatedResolution {
     const aspectRatio = originalWidth / originalHeight;
     const heightRatio = originalHeight / targetRes.height;
@@ -469,7 +471,7 @@ export class VideoTranscoder {
     originalWidth: number,
     originalHeight: number,
     targetWidth: number,
-    targetHeight: number,
+    targetHeight: number
   ): number {
     const pixelRatio =
       (targetWidth * targetHeight) / (originalWidth * originalHeight);
@@ -478,7 +480,7 @@ export class VideoTranscoder {
   }
 
   private calculateResolutions(metadata: VideoMetadata): Resolution[] {
-    const videoStream = metadata.streams.find(s => s.codec_type === "video");
+    const videoStream = metadata.streams.find((s) => s.codec_type === "video");
     if (!videoStream || !videoStream.width || !videoStream.height) {
       throw new Error("No valid video stream found");
     }
@@ -491,7 +493,7 @@ export class VideoTranscoder {
     const { resolution: bestRes } = this.findBestResolution(
       originalWidth,
       originalHeight,
-      0.05,
+      0.05
     );
     const availableResolutions: Resolution[] = [];
 
@@ -504,7 +506,7 @@ export class VideoTranscoder {
       const calculatedRes = this.calculateNewResolution(
         originalWidth,
         originalHeight,
-        targetSpec,
+        targetSpec
       );
 
       const calculatedBitrate = this.calculateBitrate(
@@ -512,7 +514,7 @@ export class VideoTranscoder {
         originalWidth,
         originalHeight,
         calculatedRes.width,
-        calculatedRes.height,
+        calculatedRes.height
       );
 
       availableResolutions.push({
@@ -553,10 +555,10 @@ export class VideoTranscoder {
 
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
       2,
-      "0",
+      "0"
     )}:${String(Math.floor(secs)).padStart(2, "0")}.${String(ms).padStart(
       3,
-      "0",
+      "0"
     )}`;
   }
 
@@ -565,7 +567,7 @@ export class VideoTranscoder {
     tilesPerColumn: number,
     frameWidth: number,
     frameHeight: number,
-    interval: number,
+    interval: number
   ): string {
     let vttContent = "WEBVTT\n\n";
     const tilesPerRow = 10; // Fixed number of tiles per row
@@ -577,27 +579,252 @@ export class VideoTranscoder {
       const x = (i % tilesPerRow) * frameWidth;
       const y = Math.floor(i / tilesPerRow) * frameHeight;
 
-      vttContent += `${this.generateStorybordFormatTime(startTime)} --> ${this.generateStorybordFormatTime(endTime)}\n`;
+      vttContent += `${this.generateStorybordFormatTime(
+        startTime
+      )} --> ${this.generateStorybordFormatTime(endTime)}\n`;
       vttContent += `storyboard.jpg#xywh=${x},${y},${frameWidth},${frameHeight}\n\n`;
     }
 
     return vttContent;
   }
 
+  private getLanguageCode(language?: string): string {
+    const avalable_language = [
+      ["aar", "aa"],
+      ["abk", "ab"],
+      ["afr", "af"],
+      ["aka", "ak"],
+      ["alb", "sq"],
+      ["amh", "am"],
+      ["ara", "ar"],
+      ["arg", "an"],
+      ["arm", "hy"],
+      ["asm", "as"],
+      ["ava", "av"],
+      ["ave", "ae"],
+      ["aym", "ay"],
+      ["aze", "az"],
+      ["bak", "ba"],
+      ["bam", "bm"],
+      ["baq", "eu"],
+      ["bel", "be"],
+      ["ben", "bn"],
+      ["bih", "bh"],
+      ["bis", "bi"],
+      ["bod", "bo"],
+      ["bos", "bs"],
+      ["bre", "br"],
+      ["bul", "bg"],
+      ["bur", "my"],
+      ["cat", "ca"],
+      ["ces", "cs"],
+      ["cha", "ch"],
+      ["che", "ce"],
+      ["chi", "zh"],
+      ["chu", "cu"],
+      ["chv", "cv"],
+      ["cor", "kw"],
+      ["cos", "co"],
+      ["cre", "cr"],
+      ["cym", "cy"],
+      ["cze", "cs"],
+      ["dan", "da"],
+      ["deu", "de"],
+      ["div", "dv"],
+      ["dut", "nl"],
+      ["dzo", "dz"],
+      ["ell", "el"],
+      ["eng", "en"],
+      ["epo", "eo"],
+      ["est", "et"],
+      ["eus", "eu"],
+      ["ewe", "ee"],
+      ["fao", "fo"],
+      ["fas", "fa"],
+      ["fij", "fj"],
+      ["fin", "fi"],
+      ["fra", "fr"],
+      ["fre", "fr"],
+      ["fry", "fy"],
+      ["ful", "ff"],
+      ["geo", "ka"],
+      ["ger", "de"],
+      ["gla", "gd"],
+      ["gle", "ga"],
+      ["glg", "gl"],
+      ["glv", "gv"],
+      ["gre", "el"],
+      ["grn", "gn"],
+      ["guj", "gu"],
+      ["hat", "ht"],
+      ["hau", "ha"],
+      ["heb", "he"],
+      ["her", "hz"],
+      ["hin", "hi"],
+      ["hmo", "ho"],
+      ["hrv", "hr"],
+      ["hun", "hu"],
+      ["hye", "hy"],
+      ["ibo", "ig"],
+      ["ice", "is"],
+      ["ido", "io"],
+      ["iii", "ii"],
+      ["iku", "iu"],
+      ["ile", "ie"],
+      ["ina", "ia"],
+      ["ind", "id"],
+      ["ipk", "ik"],
+      ["isl", "is"],
+      ["ita", "it"],
+      ["jav", "jv"],
+      ["jpn", "ja"],
+      ["kal", "kl"],
+      ["kan", "kn"],
+      ["kas", "ks"],
+      ["kat", "ka"],
+      ["kau", "kr"],
+      ["kaz", "kk"],
+      ["khm", "km"],
+      ["kik", "ki"],
+      ["kin", "rw"],
+      ["kir", "ky"],
+      ["kom", "kv"],
+      ["kon", "kg"],
+      ["kor", "ko"],
+      ["kua", "kj"],
+      ["kur", "ku"],
+      ["lao", "lo"],
+      ["lat", "la"],
+      ["lav", "lv"],
+      ["lim", "li"],
+      ["lin", "ln"],
+      ["lit", "lt"],
+      ["ltz", "lb"],
+      ["lub", "lu"],
+      ["lug", "lg"],
+      ["mac", "mk"],
+      ["mah", "mh"],
+      ["mal", "ml"],
+      ["mao", "mi"],
+      ["mar", "mr"],
+      ["may", "ms"],
+      ["mkd", "mk"],
+      ["mlg", "mg"],
+      ["mlt", "mt"],
+      ["mon", "mn"],
+      ["mri", "mi"],
+      ["msa", "ms"],
+      ["mya", "my"],
+      ["nau", "na"],
+      ["nav", "nv"],
+      ["nbl", "nr"],
+      ["nde", "nd"],
+      ["ndo", "ng"],
+      ["nep", "ne"],
+      ["nld", "nl"],
+      ["nno", "nn"],
+      ["nob", "nb"],
+      ["nor", "no"],
+      ["nya", "ny"],
+      ["oci", "oc"],
+      ["oji", "oj"],
+      ["ori", "or"],
+      ["orm", "om"],
+      ["oss", "os"],
+      ["pan", "pa"],
+      ["per", "fa"],
+      ["pli", "pi"],
+      ["pol", "pl"],
+      ["por", "pt"],
+      ["pus", "ps"],
+      ["que", "qu"],
+      ["roh", "rm"],
+      ["ron", "ro"],
+      ["rum", "ro"],
+      ["run", "rn"],
+      ["rus", "ru"],
+      ["sag", "sg"],
+      ["san", "sa"],
+      ["sin", "si"],
+      ["slk", "sk"],
+      ["slo", "sk"],
+      ["slv", "sl"],
+      ["sme", "se"],
+      ["smo", "sm"],
+      ["sna", "sn"],
+      ["snd", "sd"],
+      ["som", "so"],
+      ["sot", "st"],
+      ["spa", "es"],
+      ["sqi", "sq"],
+      ["srd", "sc"],
+      ["srp", "sr"],
+      ["ssw", "ss"],
+      ["sun", "su"],
+      ["swa", "sw"],
+      ["swe", "sv"],
+      ["tah", "ty"],
+      ["tam", "ta"],
+      ["tat", "tt"],
+      ["tel", "te"],
+      ["tgk", "tg"],
+      ["tgl", "tl"],
+      ["tha", "th"],
+      ["tib", "bo"],
+      ["tir", "ti"],
+      ["ton", "to"],
+      ["tsn", "tn"],
+      ["tso", "ts"],
+      ["tuk", "tk"],
+      ["tur", "tr"],
+      ["twi", "tw"],
+      ["uig", "ug"],
+      ["ukr", "uk"],
+      ["urd", "ur"],
+      ["uzb", "uz"],
+      ["ven", "ve"],
+      ["vie", "vi"],
+      ["vol", "vo"],
+      ["wel", "cy"],
+      ["wln", "wa"],
+      ["wol", "wo"],
+      ["xho", "xh"],
+      ["yid", "yi"],
+      ["yor", "yo"],
+      ["zha", "za"],
+      ["zho", "zh"],
+      ["zul", "zu"],
+    ];
+    if (!language) {
+      return "eng"
+    }
+
+    if (!avalable_language.map(lang => lang[0]).includes(language)) {
+      return "eng"
+    }
+
+    return language;
+
+
+  }
+  
+
   private generateFfmpegCommands(
     inputFile: string,
     outputDir: string,
-    metadata: VideoMetadata,
+    metadata: VideoMetadata
   ): {
     ffmpegCommandsArgs: string[][];
     pakagetCommand: string[];
+    audio_channels: number;
+    subtitle_channels: number;
     finalMetadata: FinalMetadata;
   } {
     logger.debug(
       "generateFfmpegCommands metadata",
-      JSON.stringify(metadata, null, 2),
+      JSON.stringify(metadata, null, 2)
     );
-    const videoStream = metadata.streams.find(s => s.codec_type === "video");
+    const videoStream = metadata.streams.find((s) => s.codec_type === "video");
     if (!videoStream) throw new Error("No video stream found");
     const originalFPS = this.getFPS(videoStream);
     logger.debug("generateFfmpegCommands originalFPS", originalFPS);
@@ -605,33 +832,35 @@ export class VideoTranscoder {
     const resolutions = this.calculateResolutions(metadata);
     logger.debug(
       "generateFfmpegCommands resolutions.length",
-      resolutions.length,
+      resolutions.length
     );
 
-    const audioStreams = metadata.streams.filter(s => s.codec_type === "audio");
+    const audioStreams = metadata.streams.filter(
+      (s) => s.codec_type === "audio"
+    );
     logger.debug(
       "generateFfmpegCommands audioStreams.length",
-      audioStreams.length,
+      audioStreams.length
     );
     const subtitleStreams = metadata.streams.filter(
-      s => s.codec_type === "subtitle",
+      (s) => s.codec_type === "subtitle"
     );
     logger.debug(
       "generateFfmpegCommands subtitleStreams.length",
-      subtitleStreams.length,
+      subtitleStreams.length
     );
     const baseIDRInterval = Math.round(originalFPS * 3);
     logger.debug(
       "generateFfmpegCommands baseIDRInterval {fps * 3}",
-      baseIDRInterval,
+      baseIDRInterval
     );
 
     // metadata
-    const totalParts = this.GPU ? Math.floor(resolutions.length / 3) : 1;
+    const totalParts = this.GPU ? Math.ceil(resolutions.length / 3) : 1;
     const filterComplex: string[][] = [];
     const ffmpegCommandArgs: string[][] = Array.from({
       length: totalParts,
-    }).map(_ => []);
+    }).map((_) => []);
     const pakagetCommandArgs: string[] = [];
 
     const finalMetadata: FinalMetadata = {
@@ -645,7 +874,7 @@ export class VideoTranscoder {
       filterComplex.push([
         `[0:v]split=${resolutions.length}${Array.from(
           { length: resolutions.length },
-          (_, i) => `[v${i}]`,
+          (_, i) => `[v${i}]`
         ).join("")}`,
       ]);
     } else {
@@ -655,12 +884,12 @@ export class VideoTranscoder {
           const start = i * 3;
           const end = Math.min(start + 3, resolutions.length);
           return [
-            `[0:v]split=3${Array.from(
+            `[0:v]split=${end - start}${Array.from(
               { length: end - start },
-              (_, j) => `[v${start + j}]`,
+              (_, j) => `[v${start + j}]`
             ).join("")}`,
           ];
-        }),
+        })
       );
     }
     const basePath = path.join(outputDir, "hls");
@@ -671,8 +900,8 @@ export class VideoTranscoder {
         originalFPS >= 60 && res.height >= 720
           ? 60
           : originalFPS < 30
-            ? originalFPS
-            : 30;
+          ? originalFPS
+          : 30;
 
       if (!filterComplex[this.GPU ? part : 0]) {
         filterComplex[this.GPU ? part : 0] = [];
@@ -681,12 +910,14 @@ export class VideoTranscoder {
       filterComplex[this.GPU ? part : 0]!.push(
         `[v${index}]scale=${res.width}:${res.height}${
           targetFPS !== originalFPS ? `,fps=${targetFPS}` : ""
-        }[v${index}out]`,
+        }[v${index}out]`
       );
 
       const variantPath = path.join(outputDir, `${res.name}.mp4`);
-
-      ffmpegCommandArgs[part]!.push(
+      if (!ffmpegCommandArgs[part]) {
+        ffmpegCommandArgs[part] = [];
+      }
+      ffmpegCommandArgs[part].push(
         "-map",
         `[v${index}out]`,
         "-c:v",
@@ -721,28 +952,29 @@ export class VideoTranscoder {
         "+faststart+negative_cts_offsets",
         "-video_track_timescale",
         "90000",
-        `${variantPath}`,
+        `${variantPath}`
       );
 
       pakagetCommandArgs.push(
         `in=${variantPath},stream=video,segment_template=${path.join(
           basePath,
-          `video_${res.name}_$Number$.ts`,
+          `video_${res.name}_$Number$.ts`
         )},playlist_name=${path.join(
           basePath,
-          `video_${res.name}.m3u8`,
+          `video_${res.name}.m3u8`
         )},iframe_playlist_name=${path.join(
           basePath,
-          `video_${res.name}_iframe.m3u8`,
-        )}`,
+          `video_${res.name}_iframe.m3u8`
+        )}`
       );
 
       finalMetadata.video.push({
         index: index,
         part: part,
         fps: targetFPS,
-        output: variantPath,
+        output: path.relative(outputDir, variantPath).replace(/\\/g, "/"),
         bitrate: res.bitrate,
+        codec: this.GPU ? "h264_nvenc" : "libx264",
         name: res.name,
         width: res.width,
         profile: res.profile,
@@ -756,7 +988,8 @@ export class VideoTranscoder {
       if (ffmpegCommandArgs.length <= totalParts) {
         ffmpegCommandArgs.push([]);
       }
-      const language = stream.tags?.language || "und";
+      const language = this.getLanguageCode(stream.tags?.language);
+      // const language = (stream.tags?.language && stream.tags?.language != "und") ? stream.tags?.language : "eng";
       const title = stream.tags?.title || `Audio_Track_${index + 1}`;
       const channels = stream.channels ?? 2;
       filterComplex[totalParts];
@@ -766,31 +999,34 @@ export class VideoTranscoder {
       if (channels <= 2) {
         const audioPath = path.join(
           outputDir,
-          `audio_${language}_ch_${channels}.mp4`,
+          `audio_${language}_ch_${channels}.mp4`
         );
-        ffmpegCommandArgs[totalParts]!.push(
+        if (ffmpegCommandArgs[totalParts] === undefined) {
+          ffmpegCommandArgs[totalParts] = [];
+        }
+        ffmpegCommandArgs[totalParts].push(
           "-map",
           `0:a:${index}`,
           "-c:a",
           "aac",
           "-b:a",
           "160k",
-          `${audioPath}`,
+          `${audioPath}`
         );
         pakagetCommandArgs.push(
           `in=${audioPath},stream=audio,segment_template=${path.join(
             basePath,
-            `audio_${language}_ch_${channels}_$Number$.ts`,
+            `audio_${language}_ch_${channels}_$Number$.ts`
           )},playlist_name=${path.join(
             basePath,
-            `audio_ch_${channels}_${language}.m3u8`,
-          )},hls_group_id=audio,hls_name=${title},language=${language}`,
+            `audio_ch_${channels}_${language}.m3u8`
+          )},hls_group_id=audio,hls_name=${title},language=${language}`
         );
         finalMetadata.audio.push({
           part,
           index: index,
           default: index === 0,
-          output: audioPath,
+          output: path.relative(outputDir, audioPath).replace(/\\/g, "/"),
           channels: channels,
           bitrates: 160,
           language,
@@ -811,7 +1047,7 @@ export class VideoTranscoder {
         // audio with 6 channels
         const audioPath1 = path.join(
           outputDir,
-          `audio_${language}_ch_${channels}.mp4`,
+          `audio_${language}_ch_${channels}.mp4`
         );
         ffmpegCommandArgs[totalParts]!.push(
           "-map",
@@ -820,7 +1056,7 @@ export class VideoTranscoder {
           "aac",
           "-b:a",
           "320k",
-          `${audioPath1}`,
+          `${audioPath1}`
         );
         // pakagetCommandArgs.push(
         //   `in=${audioPath1},stream=audio,segment_template=${path.join(
@@ -835,7 +1071,7 @@ export class VideoTranscoder {
           part,
           index: index,
           default: index == 0,
-          output: audioPath1,
+          output: path.relative(outputDir, audioPath1).replace(/\\/g, "/"),
           channels: channels,
           bitrates: 320,
           language,
@@ -854,24 +1090,24 @@ export class VideoTranscoder {
           "160k",
           "-af",
           `pan=stereo|c0=0.5*c2+0.707*c0+0.707*c4+0.5*c3|c1=0.5*c2+0.707*c1+0.707*c5+0.5*c3`,
-          `${audioPath2}`,
+          `${audioPath2}`
         );
 
         pakagetCommandArgs.push(
           `in=${audioPath2},stream=audio,segment_template=${path.join(
             basePath,
-            `audio_${language}_ch_2_$Number$.ts`,
+            `audio_${language}_ch_2_$Number$.ts`
           )},playlist_name=${path.join(
             basePath,
-            `audio_${language}_ch_2.m3u8`,
-          )},hls_group_id=audio,hls_name=${title},language=${language}`,
+            `audio_${language}_ch_2.m3u8`
+          )},hls_group_id=audio,hls_name=${title},language=${language}`
         );
 
         finalMetadata.audio.push({
           part,
           index: index,
           default: index === 0,
-          output: audioPath2,
+          output: path.relative(outputDir, audioPath2).replace(/\\/g, "/"),
           channels: 2,
           bitrates: 160,
           language,
@@ -885,7 +1121,7 @@ export class VideoTranscoder {
         // audio with 8 channels
         const audioPath1 = path.join(
           outputDir,
-          `audio_${language}_ch_${channels}.mp4`,
+          `audio_${language}_ch_${channels}.mp4`
         );
         ffmpegCommandArgs[totalParts]!.push(
           "-map",
@@ -894,7 +1130,7 @@ export class VideoTranscoder {
           "aac",
           "-b:a",
           "384k",
-          `${audioPath1}`,
+          `${audioPath1}`
         );
         // pakagetCommandArgs.push(
         //   `in=${audioPath1},stream=audio,segment_template=${path.join(
@@ -909,7 +1145,7 @@ export class VideoTranscoder {
           part,
           index: index,
           default: index == 0,
-          output: audioPath1,
+          output: path.relative(outputDir, audioPath1).replace(/\\/g, "/"),
           channels: channels,
           bitrates: 384,
           language,
@@ -930,24 +1166,24 @@ export class VideoTranscoder {
           "160k",
           "-af",
           `pan=stereo|c0=0.5*c2+0.707*c0+0.5*c4+0.5*c6+0.5*c3|c1=0.5*c2+0.707*c1+0.5*c5+0.5*c7+0.5*c3`,
-          `${audioPath2}`,
+          `${audioPath2}`
         );
 
         pakagetCommandArgs.push(
           `in=${audioPath2},stream=audio,segment_template=${path.join(
             basePath,
-            `audio_${language}_ch_2_$Number$.ts`,
+            `audio_${language}_ch_2_$Number$.ts`
           )},playlist_name=${path.join(
             basePath,
-            `audio_${language}_ch_2.m3u8`,
-          )},hls_group_id=audio,hls_name=${title},language=${language}`,
+            `audio_${language}_ch_2.m3u8`
+          )},hls_group_id=audio,hls_name=${title},language=${language}`
         );
 
         finalMetadata.audio.push({
           part,
           index: index,
           default: index === 0,
-          output: audioPath2,
+          output: path.relative(outputDir, audioPath2).replace(/\\/g, "/"),
           channels: 2,
           bitrates: 160,
           language,
@@ -959,14 +1195,14 @@ export class VideoTranscoder {
 
       const audioPath1 = path.join(
         outputDir,
-        `audio_${language}_ch_${channels}.mp4`,
+        `audio_${language}_ch_${channels}.mp4`
       );
       ffmpegCommandArgs[totalParts]!.push(
         "-map",
         `[0:a:${index}]`,
         "-c:a",
         "aac",
-        `${audioPath1}`,
+        `${audioPath1}`
       );
       // pakagetCommandArgs.push(
       //   `in=${audioPath1},stream=audio,segment_template=${path.join(
@@ -981,7 +1217,7 @@ export class VideoTranscoder {
         part,
         index: index,
         default: index == 0,
-        output: audioPath1,
+        output: path.relative(outputDir, audioPath1).replace(/\\/g, "/"),
         channels: channels,
         bitrates: -1,
         language,
@@ -997,24 +1233,24 @@ export class VideoTranscoder {
         "aac",
         "-ac",
         "2",
-        `${audioPath2}`,
+        `${audioPath2}`
       );
 
       pakagetCommandArgs.push(
         `in=${audioPath2},stream=audio,segment_template=${path.join(
           basePath,
-          `audio_${language}_ch_2_$Number$.ts`,
+          `audio_${language}_ch_2_$Number$.ts`
         )},playlist_name=${path.join(
           basePath,
-          `audio_${language}_ch_2.m3u8`,
-        )},hls_group_id=audio,hls_name=${title},language=${language}`,
+          `audio_${language}_ch_2.m3u8`
+        )},hls_group_id=audio,hls_name=${title},language=${language}`
       );
 
       finalMetadata.audio.push({
         part,
         index: index,
         default: index === 0,
-        output: audioPath2,
+        output: path.relative(outputDir, audioPath2).replace(/\\/g, "/"),
         channels: 2,
         bitrates: 160,
         language,
@@ -1024,14 +1260,14 @@ export class VideoTranscoder {
     });
 
     subtitleStreams.map((stream, index) => {
-      const language = stream.tags?.language || "und";
+      const language = stream.tags?.language || "eng";
       const title = stream.tags?.title || `Subtitle_Track_${index + 1}`;
 
       const { codec, outputFormat } = this.getSubtitleCodecInfo(stream);
 
       const subtitlePath = path.join(
         outputDir,
-        `subtitle_${index}_${language}.${outputFormat}`,
+        `subtitle_${index}_${language}.${outputFormat}`
       );
       //   `-map 0:s:${index} -c:s ${codec} ` + `"${subtitlePath}" `
 
@@ -1043,13 +1279,13 @@ export class VideoTranscoder {
         `0:s:${index}`,
         "-c:s",
         codec,
-        `${subtitlePath}`,
+        `${subtitlePath}`
       );
       finalMetadata.subtitle.push({
         part: totalParts,
         index: index,
         default: index === 0,
-        output: subtitlePath,
+        output: path.relative(outputDir, subtitlePath).replace(/\\/g, "/"),
         language,
         title,
         codec,
@@ -1086,26 +1322,19 @@ export class VideoTranscoder {
         "--hls_master_playlist_output",
         path.join(outputDir, "master.m3u8"),
       ],
+      audio_channels: audioStreams.length,
+      subtitle_channels: subtitleStreams.length,
       finalMetadata: {
-        audio: finalMetadata.audio.map(audio => ({
-          ...audio,
-          output: audio.output.replace(/\\/g, "/"),
-        })),
-        subtitle: finalMetadata.subtitle.map(subtitle => ({
-          ...subtitle,
-          output: subtitle.output.replace(/\\/g, "/"),
-        })),
-        video: finalMetadata.video.map(video => ({
-          ...video,
-          output: video.output.replace(/\\/g, "/"),
-        })),
+        audio: finalMetadata.audio,
+        subtitle: finalMetadata.subtitle,
+        video: finalMetadata.video,
       },
     };
   }
 
   private async getVideoMetadata(
     inputFile: string,
-    option?: { abortController?: AbortController },
+    option?: { abortController?: AbortController }
   ): Promise<VideoMetadata> {
     const cmd = `ffprobe -v quiet -print_format json -show_format -show_streams "${inputFile}"`;
     return new Promise((resolve, reject) => {
@@ -1120,7 +1349,7 @@ export class VideoTranscoder {
             return;
           }
           resolve(JSON.parse(stdout));
-        },
+        }
       );
     });
     // const output = await
@@ -1143,7 +1372,7 @@ export class VideoTranscoder {
   //     while (queue.length > 0 && inProgress.size < maxConcurrent) {
   //       const file = queue.shift()!;
   //       inProgress.add(file);
-        
+
   //       customS3Uploader.uploadStream(
   //         env.S3_VIDEO_BUCKET,
   //         file.replace(/\\/g, "/"),
@@ -1164,17 +1393,17 @@ export class VideoTranscoder {
   generateStoryBord(
     inputFile: string,
     outputDir: string,
-    metadata: VideoMetadata,
+    metadata: VideoMetadata
   ) {
     logger.debug("Getting video metadata...");
-    const video = metadata.streams.find(s => s.codec_type == "video");
+    const video = metadata.streams.find((s) => s.codec_type == "video");
     if (!video) {
       throw new Error(`video stream not found in input: ${inputFile}`);
     }
     // Calculate dimensions
     const targetWidth = 180;
     const targetHeight = Math.round(
-      (targetWidth / video.width!) * video.height!,
+      (targetWidth / video.width!) * video.height!
     );
 
     const duration = parseInt(metadata.format.duration);
@@ -1221,7 +1450,7 @@ export class VideoTranscoder {
           path.join(outputDir, "storyboard.jpg"),
         ],
         {
-          onStart: command => {
+          onStart: (command) => {
             logger.debug(command);
           },
           onEnd: () => {
@@ -1233,12 +1462,12 @@ export class VideoTranscoder {
               tilesPerColumn,
               targetWidth,
               targetHeight,
-              interval,
+              interval
             );
 
             fs.writeFileSync(
               path.join(outputDir, "storyboard.vtt"),
-              vttContent,
+              vttContent
             );
             console.log("VTT file generated successfully!");
             resolve({
@@ -1252,100 +1481,114 @@ export class VideoTranscoder {
           },
           onProgress(progress) {
             console.log(
-              `Generating storyboard: ${Math.round(progress.percent ?? 0)}%`,
+              `Generating storyboard: ${Math.round(progress.percent ?? 0)}%`
             );
           },
-        },
+        }
       );
     });
+  }
+
+  sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async transcode(
     inputFile: string,
     outputDir: string,
-    options?: TranscodeOptions,
+    options?: TranscodeOptions
   ): Promise<TranscodeResult> {
     // Remove output directory if it exists to start fresh
     if (fs.existsSync(outputDir)) {
       fs.rmSync(outputDir, { recursive: true, force: true });
     }
-    const metadata = await this.getVideoMetadata(inputFile, {
-      abortController: options?.abortController,
-    });
-    const commands = this.generateFfmpegCommands(
-      inputFile,
-      outputDir,
-      metadata,
-    );
-    this.createDir(outputDir);
-    // createDir(path.join(outputDir));
-    const allProgress: {
-      [key: number]: FFmpegProgress;
-    } = {};
-    const end: number[] = [];
-    const errors: {
-      index: number;
-      error: Error;
-    }[] = [];
-
-    const allStreams = [
-      ...commands.finalMetadata.video,
-      ...commands.finalMetadata.audio,
-      ...commands.finalMetadata.subtitle,
-    ];
-    const pakagerRes: {
-      image: string;
-      vtt: string;
-    } = {
-      image: "",
-      vtt: "",
-    };
-    options?.onFfmpegCommandGenerate?.call(this, commands);
     try {
-      await Promise.all(
-        commands.ffmpegCommandsArgs.map((args, i) => {
-          return this.ffmpegWrapper.execute(args, {
-            abortController: options?.abortController,
-            cacheId: outputDir + ":" + i,
-            onStart: command => {
-              logger.info(`Running FFmpeg part: ${i + 1}`);
-              options?.onFfmpegStart?.call(this, {
-                part: i,
-                args: args,
-                ffmpeg: this.ffmpeg,
-              });
-            },
-            onProgress: progress => {
-              allProgress[i] = progress;
-              options?.onFfmpegProgress?.call(this, {
-                part: i,
-                progress: progress,
-              });
-            },
-            onEnd: async skipUpload => {
-              end.push(i);
-              logger.info("FFmpeg command completed");
-              options?.onFfmpegEnd?.call(this, {
-                part: i,
-              });
-            },
-            onError: error => {
-              errors.push({
-                index: i,
-                error: error,
-              });
-              options?.onFfmpegError?.call(this, {
-                part: i,
-                error: error,
-              });
-              logger.error("Error during FFmpeg processing:", error);
-            },
-          });
-        }),
-      );
+      const metadata = await this.getVideoMetadata(inputFile, {
+        abortController: options?.abortController,
+      });
 
-      const [, Res] = await Promise.all([
-        this.ffmpegWrapper.pakage(commands.pakagetCommand, {
+      console.log("metadata", JSON.stringify(metadata));
+      console.log();
+      console.log();
+      console.log();
+      
+      
+      const commands = this.generateFfmpegCommands(
+        inputFile,
+        outputDir,
+        metadata
+      );
+      this.createDir(outputDir);
+      // createDir(path.join(outputDir));
+      const allProgress: {
+        [key: number]: FFmpegProgress;
+      } = {};
+      const end: number[] = [];
+      const errors: {
+        index: number;
+        error: Error;
+      }[] = [];
+
+      const allStreams = [
+        ...commands.finalMetadata.video,
+        ...commands.finalMetadata.audio,
+        ...commands.finalMetadata.subtitle,
+      ];
+      const pakagerRes: {
+        image: string;
+        vtt: string;
+      } = {
+        image: "",
+        vtt: "",
+      };
+      options?.onFfmpegCommandGenerate?.call(this, commands);
+      try {
+        await Promise.all(
+          commands.ffmpegCommandsArgs.map((args, i) => {
+            return this.ffmpegWrapper.execute(args, {
+              abortController: options?.abortController,
+              cacheId: outputDir + ":" + i,
+              onStart: (command) => {
+                logger.info(`Running FFmpeg part: ${i + 1}`);
+                options?.onFfmpegStart?.call(this, {
+                  part: i,
+                  args: args,
+                  ffmpeg: this.ffmpeg,
+                });
+              },
+              onProgress: (progress) => {
+                allProgress[i] = progress;
+                options?.onFfmpegProgress?.call(this, {
+                  part: i,
+                  progress: progress,
+                });
+              },
+              onEnd: async (skipUpload) => {
+                end.push(i);
+                logger.info("FFmpeg command completed");
+                options?.onFfmpegEnd?.call(this, {
+                  part: i,
+                });
+              },
+              onError: (error) => {
+                errors.push({
+                  index: i,
+                  error: error,
+                });
+                options?.onFfmpegError?.call(this, {
+                  part: i,
+                  error: error,
+                });
+                logger.error("Error during FFmpeg processing:", error);
+              },
+            });
+          })
+        );
+
+        await this.sleep(3000)
+        
+        const Res = await this.generateStoryBord(inputFile, outputDir, metadata);
+        await this.ffmpegWrapper.pakage(commands.pakagetCommand, {
           abortController: options?.abortController,
           onEnd: () => {
             options?.pakagerEnd?.call(this);
@@ -1354,71 +1597,83 @@ export class VideoTranscoder {
             options?.pakagerError?.call(this, error);
           },
           onStart(command) {
-            options?.pakagerStart?.call(this);
+            options?.pakagerStart?.call(this, command);
           },
-        }),
-        this.generateStoryBord(inputFile, outputDir, metadata),
-      ]);
+        })
 
-      pakagerRes["image"] = Res.image;
-      pakagerRes["vtt"] = Res.vtt;
-    } catch (error) {
-      logger.error("Error uploading file to s3", error, { path: outputDir });
-      throw error;
-    }
+        pakagerRes["image"] = Res.image;
+        pakagerRes["vtt"] = Res.vtt;
+      } catch (error) {
+        logger.error("Error uploading file to s3", error, { path: outputDir });
+        throw new Error("Error transcodeing video");
+      }
 
-    options?.onEnd?.call(this);
-    return {
-      duration: Number(metadata.format.duration),
-      streams: {
-        ...commands.finalMetadata,
-        storyboard: {
-          image: pakagerRes.image,
-          vtt: pakagerRes.vtt,
+      options?.onEnd?.call(this);
+      return {
+        duration: Number(metadata.format.duration),
+        audio_channels: commands.audio_channels,
+        subtitle_channels: commands.subtitle_channels,
+        streams: {
+          ...commands.finalMetadata,
+          // audio: commands.finalMetadata.audio,
+          // subtitle: commands.finalMetadata.subtitle,
+          // video: commands.finalMetadata.video,
+          storyboard: {
+            image: path
+              .relative(outputDir, pakagerRes.image)
+              .replace(/\\/g, "/"),
+            vtt: path.relative(outputDir, pakagerRes.vtt).replace(/\\/g, "/"),
+          },
+          hls: "master.m3u8",
         },
-        hls: path.join(outputDir, "master.m3u8").replace(/\\/g, "/"),
-      },
-    };
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Error while parsing orignal video");
+    }
   }
 }
 
-
 // await this.uploadHlsFiles(path.join(outputDir));
-export const videoTranscoder = new VideoTranscoder(
-  true,
-  "ffmpeg",
-  "D:\\bin\\packager.exe",
-);
+// export const videoTranscoder = new VideoTranscoder(
+//   true,
+//   "ffmpeg",
+//   "D:\\bin\\packager.exe"
+// );
 
-videoTranscoder
-  .transcode(
-    "D:\\test\\video transcodeing\\out2\\Red-Notice-new.mkv",
-    "transcoded/test",
-    {
-      onFfmpegCommandGenerate(data) {
-        //   console.log([
-        //     ...data.finalMetadata.subtitle,
-        //     ...data.finalMetadata.audio,
-        //     ...data.finalMetadata.video,
-        //   ]);
-      },
-      onEnd() {
-        // console.log(
-        //   "End",
-        //   JSON.stringify(
-        //     files.map(file => {
-        //       return file.parentPath + file.name;
-        //     }),
-        //   ),
-        // );
-      },
-    },
-  )
-  .then(data => {
-    console.log(JSON.stringify(data));
-    
-    console.log("done");
-    process.exit(0);
+// videoTranscoder
+//   .transcode(
+//     "./tmp/67b4421d400a07ea3a821bed.mp4",
+//     "./tmp/transcoded/67b4421d400a07ea3a821bed",
+//     {
+//       onFfmpegCommandGenerate(data) {
+//         console.log("onFfmpegCommandGenerate", JSON.stringify(data));
 
-  })
-  .catch(console.error);
+//         //   console.log([
+//         //     ...data.finalMetadata.subtitle,
+//         //     ...data.finalMetadata.audio,
+//         //     ...data.finalMetadata.video,
+//         //   ]);
+//       },
+//       onEnd() {
+//         // console.log(
+//         //   "End",
+//         //   JSON.stringify(
+//         //     files.map(file => {
+//         //       return file.parentPath + file.name;
+//         //     }),
+//         //   ),
+//         // );
+//       },
+//       onFfmpegProgress(data) {},
+//     }
+//   )
+//   .then((data) => {
+//     console.log(JSON.stringify(data));
+
+//     console.log("done");
+//     process.exit(0);
+//   })
+//   .catch(console.error);

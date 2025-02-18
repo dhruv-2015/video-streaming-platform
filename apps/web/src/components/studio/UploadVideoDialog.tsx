@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { isTRPCClientError, trpcClient } from "@/trpc/client";
 import axios, { AxiosError } from "axios";
+import { title } from "process";
 
 interface UploadDialogProps {
   open: boolean;
@@ -25,6 +26,13 @@ interface UploadDialogProps {
 export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
   const [step, setStep] = React.useState<"upload" | "details">("upload");
   const [error, setError] = React.useState<string>();
+  const [videoDetails, setVideoDetails] = React.useState<{
+    title: string;
+    description: string;
+  }>({
+    title: "",
+    description: "sxaX",
+  });
   const [thumbnailError, setThumbnailError] = React.useState<string>();
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const [videoId, setVideoId] = React.useState<string>();
@@ -37,6 +45,15 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const thumbnailInputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (selectedFile) {
+      setVideoDetails(pre => ({
+        ...pre,
+        title: selectedFile.name.replace(/\.[^/.]+$/, ""),
+      }))
+    }
+  },[selectedFile])
 
   const cancelUpload = async () => {
     if (abortControllerRef.current) {
@@ -126,6 +143,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
       setProgress(100);
       await trpcClient.studio.video.verifyVideoUpload.query({
         video_id: video_id,
+        fileId: fileCreated.fileId,
       });
     } catch (error: any) {
       if (isTRPCClientError(error)) {
@@ -154,11 +172,17 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     // }, 500);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (progress < 100) {
+    if (videoId && progress < 100) {
       return;
     }
+
+    await trpcClient.studio.video.updateVideo.mutate({
+      description: videoDetails.description,
+      title: videoDetails.title,
+      video_id: videoId!,
+    })
     // Handle form submission
     onOpenChange(false);
     setVideoId(undefined);
@@ -323,7 +347,8 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                     <Label htmlFor="title">Title (required)</Label>
                     <Input
                       id="title"
-                      value={selectedFile?.name.replace(/\.[^/.]+$/, "")}
+                      value={videoDetails['title']}
+                      onChange={(e) => setVideoDetails({ ...videoDetails, title: e.target.value })}
                       placeholder="Add a title that describes your video"
                       required
                     />
@@ -331,6 +356,8 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                   <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
                     <Textarea
+                      value={videoDetails['description']}
+                      onChange={(e) => setVideoDetails({ ...videoDetails, description: e.target.value })}
                       id="description"
                       placeholder="Tell viewers about your video (use markdown for formatting)"
                       className="min-h-[150px]"
@@ -401,7 +428,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                     disabled={progress < 100}
                     onClick={handleSubmit}
                   >
-                    Next
+                    done
                   </Button>
                 </div>
               </TabsContent>

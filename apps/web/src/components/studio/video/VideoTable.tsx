@@ -4,9 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import {
   type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
-  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -14,15 +11,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@/components/ui/table";
-import { ArrowUpDown, Eye, EyeOff, MoreHorizontal } from "lucide-react";
-
+import { ArrowUpDown, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import {
   Table,
   TableBody,
@@ -32,55 +23,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Image from "next/image";
+import { useAppSelector } from "@/redux/store";
+import { trpc } from "@/trpc/client";
+import { RouterOutputs } from "@workspace/trpc";
 
-export type Video = {
-  id: string;
-  thumbnail: string;
-  title: string;
-  description: string;
-  duration: string;
-  visibility: "Public" | "Private" | "Unlisted";
-  publishDate: string;
-  uploadDate: string;
-  views: number;
-  comments: number;
-  likes: number;
-  dislikes: number;
-};
+type Video = RouterOutputs["channel"]["getVideos"]["videos"][0];
 
-const data: Video[] = [
-  {
-    id: "1",
-    thumbnail: "http://v0.dev/placeholder.svg",
-    title: "How to Build a Next.js App",
-    description: "Learn how to build a full-stack application with Next.js",
-    duration: "12:34",
-    visibility: "Public",
-    publishDate: "2024-02-10",
-    uploadDate: "2024-02-05",
-    views: 1234,
-    comments: 56,
-    likes: 789,
-    dislikes: 12,
-  },
-  {
-    id: "2",
-    thumbnail: "http://v0.dev/placeholder.svg",
-    title: "How to Build a Next.js Appdcsz",
-    description: "Learn how to build a full-stack application with Next.js",
-    duration: "12:34",
-    visibility: "Public",
-    publishDate: "2024-02-10",
-    uploadDate: "2024-02-07",
-    views: 12,
-    comments: 5,
-    likes: 78,
-    dislikes: 2,
-  },
-  // Add more sample data as needed
-];
-
-export const columns: ColumnDef<Video>[] = [
+const columns: ColumnDef<Video>[] = [
   {
     accessorKey: "thumbnail",
     header: "Video",
@@ -93,38 +42,44 @@ export const columns: ColumnDef<Video>[] = [
             className="object-cover"
             fill
           />
-          <div className="absolute bottom-1 right-1 rounded bg-black/80 px-1 text-xs text-white">
-            {row.getValue("duration")}
-          </div>
         </div>
       );
     },
   },
   {
     accessorKey: "title",
-    header: "title",
-
+    header: "Title",
     cell: ({ row }) => {
       return (
-        <div className="flex items-center gap-3">
+        <Link
+          href={`/studio/video/${row.original.id}`}
+          className="flex items-center gap-3"
+        >
           <div>
-            <div className="font-medium">{row.getValue("title")}</div>
+            <div className="font-medium">
+            {row.original.title.length > 60
+                ? row.original.title.slice(0, 60) + "..."
+                : row.original.title}
+            </div>
             <div className="text-sm text-muted-foreground">
-              {row.getValue("description")}
+     
+              {row.original.description.length > 50
+                ? row.original.description.slice(0, 50) + "..."
+                : row.original.description}
             </div>
           </div>
-        </div>
+        </Link>
       );
     },
   },
   {
-    accessorKey: "visibility",
+    accessorKey: "video_type",
     header: "Visibility",
     cell: ({ row }) => {
-      const visibility: string = row.getValue("visibility");
+      const visibility: string = row.getValue("video_type");
       return (
         <div className="flex items-center gap-2">
-          {visibility === "Private" ? (
+          {visibility === "PRIVATE" ? (
             <EyeOff className="h-4 w-4" />
           ) : (
             <Eye className="h-4 w-4" />
@@ -135,35 +90,44 @@ export const columns: ColumnDef<Video>[] = [
     },
   },
   {
-    accessorKey: "uploadDate",
+    accessorKey: "created_at",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          upload date
+          Created At
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
+    cell: ({ row }) => {
+      // return row.getValue("created_at");
+      const date = new Date(row.getValue("created_at"));
+      return date.toLocaleDateString() + "\n" + date.toLocaleTimeString();
+    },
   },
   {
-    accessorKey: "publishDate",
+    accessorKey: "published_at",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Publish date
+          Published At
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
+    cell: ({ row }) => {
+      const date: string = row.getValue("published_at");
+      return date ? new Date(date).toLocaleDateString() : "Draft";
+    },
   },
   {
-    accessorKey: "views",
+    accessorKey: "view_count",
     header: ({ column }) => {
       return (
         <Button
@@ -177,22 +141,28 @@ export const columns: ColumnDef<Video>[] = [
     },
   },
   {
-    accessorKey: "comments",
+    accessorKey: "comment_count",
     header: "Comments",
   },
   {
     accessorKey: "likes",
     header: "Likes",
     cell: ({ row }) => {
-      const likes = Number.parseInt(row.getValue("likes"));
-      const dislikes = Number.parseInt(row.getValue("dislikes"));
+      const likes = row.original.like_count;
+      const dislikes = row.original.dislike_count;
       const total = likes + dislikes;
       const percentage = total > 0 ? (likes / total) * 100 : 0;
 
       return (
-        <div className="w-[100px]">
+        <div className="w-[100px] group relative">
           <div className="flex items-center gap-2">
-            <span>{likes}</span>
+            <span>
+              {likes >= 1000000
+                ? (likes / 1000000).toFixed(1) + "M"
+                : likes >= 1000
+                  ? (likes / 1000).toFixed(1) + "K"
+                  : likes}
+            </span>
             <span className="text-muted-foreground">
               ({percentage.toFixed(1)}%)
             </span>
@@ -203,64 +173,84 @@ export const columns: ColumnDef<Video>[] = [
               style={{ width: `${percentage}%` }}
             />
           </div>
+          <div className="absolute -top-8 left-0 hidden group-hover:block bg-popover text-popover-foreground p-2 rounded-md shadow-md text-sm">
+            {likes.toLocaleString()} likes, {dislikes.toLocaleString()} dislikes
+          </div>
         </div>
       );
     },
   },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Edit</DropdownMenuItem>
-            <DropdownMenuItem>Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
+  // {
+  //   id: "actions",
+  //   cell: ({ row }) => {
+  //     return (
+  //       <DropdownMenu>
+  //         <DropdownMenuTrigger asChild>
+  //           <Button variant="ghost" className="h-8 w-8 p-0">
+  //             <MoreHorizontal className="h-4 w-4" />
+  //           </Button>
+  //         </DropdownMenuTrigger>
+  //         <DropdownMenuContent align="end">
+  //           <DropdownMenuItem>Edit</DropdownMenuItem>
+  //           <DropdownMenuItem asChild><Button onClick={() => {trpcClient.studio}}>Delete</Button></DropdownMenuItem>
+  //         </DropdownMenuContent>
+  //       </DropdownMenu>
+  //     );
+  //   },
+  // },
 ];
 
-export function VideoTable() {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+export function VideosTable() {
+  const user = useAppSelector(state => state.user);
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
+  const [search, setSearch] = React.useState<string>("");
+  
 
-    console.log(sorting, "sorting");
-    console.log(columnFilters, "columnFilters");
-    console.log(columnVisibility, "columnVisibility");
-    
-    
-    
+  const { data: videos, isLoading } = trpc.channel.getVideos.useQuery(
+    { channel_id: user.channel_id!, limit: limit, page: page, query: search },
+    {
+      enabled: !!user.channel_id,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+    },
+  );
 
   const table = useReactTable({
-    data,
+    data: videos?.videos ?? [],
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
   });
+
+  // if (isLoading) {
+  //   return <div>Loading...</div>;
+  // }
 
   return (
     <div className="w-full">
+      <div className="flex items-center justify-between py-4">
+        <div className="flex items-center gap-2">
+          <input
+            placeholder="Search videos..."
+            value={search ?? ""}
+            onChange={e => setSearch(e.target.value)}
+            className="rounded-md border px-3 py-2"
+          />
+        </div>
+        <select
+          value={limit}
+          onChange={e => setLimit(Number(e.target.value))}
+          className="rounded-md border px-3 py-2"
+        >
+          <option value={10}>10 per page</option>
+          <option value={25}>25 per page</option>
+          <option value={50}>50 per page</option>
+        </select>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -287,33 +277,19 @@ export function VideoTable() {
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map(row => (
                 <TableRow
-                  className="cursor-pointer transition-colors hover:bg-muted/50 group-focus:bg-muted/50"
-                  data-state={row.getIsSelected() && "selected"}
-                  onClick={e => {}}
+                  key={row.id}
+                  className="cursor-pointer transition-colors hover:bg-muted/50"
                 >
-                  {/* <Link
-                    href={`/studio/video/${row.original.id}`}
-                    key={row.id}
-                    className="group"
-                  > */}
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id}>
-                      {/* Stop propagation for action buttons to prevent navigation when clicking them */}
-                      <div
-                        onClick={
-                          cell.column.id === "actions"
-                            ? e => e.preventDefault()
-                            : undefined
-                        }
-                      >
+                      <>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
                         )}
-                      </div>
+                      </>
                     </TableCell>
                   ))}
-                  {/* </Link> */}
                 </TableRow>
               ))
             ) : (
@@ -329,9 +305,26 @@ export function VideoTable() {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
+
+      <div className="flex items-center justify-between py-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setPage(p => p + 1)}
+            disabled={!videos || videos.videos.length < limit}
+          >
+            Next
+          </Button>
+        </div>
         <div className="text-muted-foreground text-sm">
-          {table.getFilteredRowModel().rows.length} videos
+          {videos?.total_videos ?? 0} videos
         </div>
       </div>
     </div>

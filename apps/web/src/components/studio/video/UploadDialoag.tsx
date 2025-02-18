@@ -1,24 +1,20 @@
 "use client";
-import { Button } from "@/components/ui/button";
+
+import * as React from "react";
 import { Upload } from "lucide-react";
-import { UploadDialog } from "@/components/studio/UploadVideoDialog";
-import { useState } from "react";
+import { Button } from "@/components/ui/button"
+import { UploadDialog } from "../UploadVideoDialog";
 
 export function UploadDialoag() {
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
+
   return (
-    <>
-      <Button
-        className="ml-auto"
-        size="sm"
-        onClick={() => setUploadDialogOpen(true)}
-      >
-        <Upload className="mr-2 h-4 w-4" /> Upload video
+    <div className="ml-auto">
+      <Button onClick={() => setOpen(true)} className="ml-4">
+        <Upload className="mr-2 h-4 w-4" />
+        Upload
       </Button>
-      <UploadDialog
-        open={uploadDialogOpen}
-        onOpenChange={setUploadDialogOpen}
-      />
-    </>
+      <UploadDialog open={open} onOpenChange={setOpen}/>
+    </div>
   );
 }

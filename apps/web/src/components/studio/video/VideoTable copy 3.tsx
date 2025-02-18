@@ -1,0 +1,251 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@/components/ui/table";
+import { ArrowUpDown, Eye, EyeOff, MoreHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import Image from "next/image";
+import { useAppSelector } from "@/redux/store";
+import { trpc } from "@/trpc/client";
+
+type Video = {
+  id: string;
+  thumbnail?: string;
+  title: string;
+  video_type: "PUBLIC" | "PRIVATE" | "UNLISTED";
+  view_count: number;
+  description: string;
+  like_count: number;
+  dislike_count: number;
+  comment_count: number;
+  is_published: boolean;
+  channel_id: string;
+};
+
+const columns: ColumnDef<Video>[] = [
+  {
+    accessorKey: "thumbnail",
+    header: "Video",
+    cell: ({ row }) => {
+      return (
+        <div className="relative h-20 w-36 overflow-hidden rounded-sm">
+          <Image
+            src={row.getValue("thumbnail") || "/placeholder.svg"}
+            alt={row.getValue("title")}
+            className="object-cover"
+            fill
+          />
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "title",
+    header: "Title",
+    cell: ({ row }) => {
+      return (
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="font-medium">{row.getValue("title")}</div>
+            <div className="text-sm text-muted-foreground">
+              {row.original.description}
+            </div>
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "video_type",
+    header: "Visibility",
+    cell: ({ row }) => {
+      const visibility = row.getValue("video_type");
+      return (
+        <div className="flex items-center gap-2">
+          {visibility === "PRIVATE" ? (
+            <EyeOff className="h-4 w-4" />
+          ) : (
+            <Eye className="h-4 w-4" />
+          )}
+          <span>{visibility}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "view_count",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Views
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+  },
+  {
+    accessorKey: "comment_count",
+    header: "Comments",
+  },
+  {
+    accessorKey: "likes",
+    header: "Likes",
+    cell: ({ row }) => {
+      const likes = row.original.like_count;
+      const dislikes = row.original.dislike_count;
+      const total = likes + dislikes;
+      const percentage = total > 0 ? (likes / total) * 100 : 0;
+
+      return (
+        <div className="w-[100px]">
+          <div className="flex items-center gap-2">
+            <span>{likes}</span>
+            <span className="text-muted-foreground">
+              ({percentage.toFixed(1)}%)
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>Edit</DropdownMenuItem>
+            <DropdownMenuItem>Delete</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+  },
+];
+
+export function VideosTable() {
+  const user = useAppSelector(state => state.user);
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
+
+  const { data: videos, isLoading } = trpc.channel.getVideos.useQuery(
+    { channel_id: user.channel_id!, limit: limit, page: page },
+    {
+      enabled: !!user.channel_id,
+    },
+  );
+
+  const table = useReactTable({
+    data: videos?.videos ?? [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div className="w-full">
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(headerGroup => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map(header => {
+                  return (
+                    <TableHead key={header.id}>
+                      <>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </>
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      <>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </>
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No videos found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <div className="text-muted-foreground text-sm">
+          {videos?.total_videos ?? 0} videos
+        </div>
+      </div>
+    </div>
+  );
+}

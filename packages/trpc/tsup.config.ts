@@ -18,7 +18,7 @@ export default defineConfig(options => {
         // treeshake: true,
         // metafile: true,
         
-        dts: true,
+        // dts: true,
         minify: false,
         // minify: !options.watch,
         sourcemap: true, // Enable sourcemaps .map files

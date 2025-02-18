@@ -91,7 +91,7 @@ export const tagsRouter = router({
                 id: true,
                 title: true,
                 description: true,
-                thumbnail_s3_path: true,
+                thumbnail: true,
                 channel_id: true,
                 channel: {
                   select: {
@@ -139,7 +139,7 @@ export const tagsRouter = router({
             description: video.description,
             published_at : video.published_at,
             view_count: Number(video.view_count),
-            thumbnail: `${env.S3_PUBLIC_ENDPOINT}/${video.thumbnail_s3_path}`,
+            thumbnail: video.thumbnail ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.thumbnail}` : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
             channel: {
               id: video.channel_id,
               name: video.channel.name,

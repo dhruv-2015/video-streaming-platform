@@ -1,3 +1,4 @@
+import { env } from "@workspace/env/next";
 import { type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 
@@ -5,6 +6,7 @@ export const authConfig = {
   providers: [
     Google,
   ],
+  redirectProxyUrl: env.PUBLIC_URL + "/api/auth",
   pages: {
     signIn: "/login",
     signOut: "/api/auth/signout",

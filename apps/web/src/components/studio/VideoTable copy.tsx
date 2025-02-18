@@ -91,13 +91,13 @@ export type Video = RouterOutputs['channel']['video']['getMyVideos']['videos'][0
 
 export const columns: ColumnDef<Video>[] = [
   {
-    accessorKey: "thumbnail_s3_path",
+    accessorKey: "thumbnail",
     header: "Video",
     cell: ({ row }) => {
       return (
         <div className="relative h-20 w-36 overflow-hidden rounded-sm">
           <Image
-            src={row.getValue("thumbnail_s3_path") || "/placeholder.svg"}
+            src={row.getValue("thumbnail") || "/placeholder.svg"}
             alt={row.getValue("title")}
             className="object-cover"
             fill

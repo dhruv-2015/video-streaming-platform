@@ -18,26 +18,22 @@ app.use(morgan("dev"));
 app.use(cors())
 
 app.set("trust proxy", true);
-app.get("/", (req, res) => res.redirect("/api"));
+app.get("/", (req, res) => res.redirect(env.PUBLIC_URL));
 
-app.use("/exit", (req, res) => {
-  res.send("Exiting process...");
-  process.exit(0);
-});
+// app.use("/exit", (req, res) => {
+//   res.send("Exiting process...");
+//   process.exit(0);
+// });
 
 app.use("/api/auth/*", expressAuth);
 app.use("/api/trpc", trpcExpress);
 app.use("/api", openApiUi);
 
 const server = app.listen(env.PORT, () => {
-  // redis.disconnect();
   logger.info(`✅ Server listening on port ${env.PORT}`);
   env.NODE_ENV == "production" && console.log(`✅ Server listening on port ${env.PORT}`);
-
-  // redis.disconnect(false)
 });
 
-// app.use("/api");
 
 async function gracefulShutdown() {
   logger.info("Received shutdown signal, shutting down gracefully...");

@@ -12,6 +12,16 @@ const nextConfig = {
     ignoreDuringBuilds: true,
     // dirs: ["app", "components", "lib", "trpc", "hooks"],
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '4568',
+      },
+    ],
+
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

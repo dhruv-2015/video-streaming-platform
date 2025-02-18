@@ -17,8 +17,8 @@ declare module "next-auth" {
 
 
 
-const { auth: uncachedAuth, signOut } = NextAuth(authConfig);
+const { auth: uncachedAuth, signOut, signIn } = NextAuth(authConfig);
 
 const auth = cache(uncachedAuth);
 
-export { auth, signOut, uncachedAuth };
+export { auth, signOut, uncachedAuth, signIn };

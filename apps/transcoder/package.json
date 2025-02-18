@@ -20,7 +20,9 @@
     "start": "node dist/index.js"
   },
   "devDependencies": {
-    "tsup": "^8.3.6"
+    "nodemon": "^3.1.9",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2"
   },
   "dependencies": {
     "@workspace/aws": "workspace:^",

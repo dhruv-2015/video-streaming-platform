@@ -7,14 +7,7 @@ import { cookies } from 'next/headers';
 
 
 function getUrl() {
-  const base = (() => {
-    if (typeof window !== "undefined") return "";
-    if (env.NODE_ENV != "development") {
-      return env.PUBLIC_URL;
-    }
-    return "http://localhost:3000";
-  })();
-  return `${base}/api/trpc`;
+  return `${env.API_URL}/api/trpc`;
 }
 
 export function isTRPCClientError(

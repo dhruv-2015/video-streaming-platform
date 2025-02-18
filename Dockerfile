@@ -148,7 +148,7 @@ COPY --from=apibuilder /out/dist .
 COPY --from=apibuilder /out/node_modules ./node_modules
 COPY --from=apibuilder /out/package.json .
 COPY --from=apibuilder /app/packages/database/generated ./packages/database/generated
-
+ENV AUTH_TRUST_HOST=true
 CMD [ "node", "index.js" ]
 
 
@@ -156,5 +156,5 @@ FROM base AS webrunner
 WORKDIR /app
 COPY --from=webbuilder /app/apps/web/.next/standalone ./
 COPY --from=webbuilder /app/apps/web/.next/static ./apps/web/.next/static
-
+ENV AUTH_TRUST_HOST=true
 CMD ["node", "apps/web/server.js"]

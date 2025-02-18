@@ -5,7 +5,7 @@ export default defineConfig(options => {
     return {
         entry: ["./src/index.ts", "./src/**/*.ts"], // Entry file
         // noExternal: ["@workspace/database", "ioredis"], // Bundle any package starting with `@example` and their dependencies
-        splitting: true,
+        splitting: false,
         bundle: true,
         target: "es2020",
         // format: ['esm'],

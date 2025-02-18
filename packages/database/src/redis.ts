@@ -14,7 +14,7 @@ export const redis = new Redis(env.REDIS_URL, {
         const delay = Math.min(times * 50, 1000);
         return delay;
     },
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null,
 });
 redis.on("ready", () => {
     logger.info("✅ Redis client ready");

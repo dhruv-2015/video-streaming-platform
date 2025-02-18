@@ -20,7 +20,7 @@ redis.on("connect", () => {
 
 const videoTranscoderQueue = new Queue<MyData>("video_transcoder", {
   connection: redis,
-  prefix: "video_transcoder_queue",
+  prefix: "queue",
 });
 
 export async function transcodeVideo(
@@ -58,7 +58,6 @@ export async function transcodeVideo(
         removeOnFail: {
           count: 100,
         },
-        jobId: video_id,
       },
     );
 
