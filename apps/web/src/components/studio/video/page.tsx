@@ -2,6 +2,7 @@ import { VideosTable } from "@/components/studio/video/VideoTable";
 import { UploadDialoag } from "@/components/studio/video/UploadDialoag";
 
 export default function StudioVideoPage() {
+
   return (
     <div className="flex min-h-screen bg-background">
       <main className="flex-1">

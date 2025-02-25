@@ -10,6 +10,8 @@ import {
   PutObjectCommandInput,
   CopyObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -43,7 +45,7 @@ export interface PresignedUrlOptions {
   maxSizeBytes: number;
   expiresIn?: number;
   for: "avatar" | "video" | "temp";
-} 
+}
 
 // Interface for pre-signed URL response
 export interface PresignedUrlResponse {
@@ -59,6 +61,10 @@ export interface PresignedUrlResponse {
 interface CopyObject {
   bucket: string;
   key: string;
+}
+interface ContinueGetAllFiles {
+  keys: string[];
+  ContinuationToken: string;
 }
 
 class CustomS3Uploader {
@@ -76,6 +82,110 @@ class CustomS3Uploader {
       forcePathStyle: config.forcePathStyle ?? true,
     });
   }
+
+  async getAllFiles(
+    bucket: string,
+    baseDir: string,
+    continueGetAllFiles?: ContinueGetAllFiles,
+  ): Promise<string[]> {
+    try {
+      if (continueGetAllFiles) {
+        const command = new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: baseDir,
+          MaxKeys: 10000,
+          ContinuationToken: continueGetAllFiles.ContinuationToken,
+        }); // Create command
+        const response = await this.s3Client.send(command); // Send request
+        response.ContinuationToken;
+        const fileKeys: string[] = response.Contents
+          ? response.Contents.map(file => file.Key ?? "")
+              .filter(key => key !== "")
+              .map(file => file.slice(baseDir.length))
+          : []; // Extract file keys
+        const allFiles = [...continueGetAllFiles.keys, ...fileKeys]; // Remove base directory from keys
+        if (response.NextContinuationToken) {
+          return await this.getAllFiles(bucket, baseDir, {
+            keys: allFiles,
+            ContinuationToken: response.NextContinuationToken,
+          });
+        }
+      }
+      const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: baseDir,
+        MaxKeys: 10000,
+      }); // Create command
+
+      const response = await this.s3Client.send(command); // Send request
+      response.ContinuationToken;
+      const allFiles: string[] = response.Contents
+        ? response.Contents.map(file => file.Key ?? "")
+            .filter(key => key !== "")
+            .map(file => file.slice(baseDir.length))
+        : []; // Extract file key
+      if (response.NextContinuationToken) {
+        return await this.getAllFiles(bucket, baseDir, {
+          keys: allFiles,
+          ContinuationToken: response.NextContinuationToken,
+        });
+      }
+      return allFiles; // Remove base directory from keys
+    } catch (error) {
+      if (continueGetAllFiles) {
+        return continueGetAllFiles.keys;
+      }
+      throw new Error("Failed to get all files from S3");
+    }
+  }
+
+  async getBaseAllFiles(bucket: string, baseDir: string, continueGetAllFiles?: ContinueGetAllFiles): Promise<string[]> {
+    try {
+        const baseFolder: string[] = [];
+        if (continueGetAllFiles) {
+            const command = new ListObjectsV2Command({
+                Bucket: bucket,
+                Prefix: baseDir,
+                MaxKeys: 10000,
+                ContinuationToken: continueGetAllFiles.ContinuationToken
+            }); // Create command
+            const response = await this.s3Client.send(command); // Send request
+            response.ContinuationToken;
+            response.Contents ? response.Contents.map(file => file.Key ?? "").filter(key => key !== "").map(file => file.slice(baseDir.length)).forEach((key, i) => {
+                if (key.split("/")[0] && !baseFolder.includes(key.split("/")[0]!)) {
+                    baseFolder.push(key.split("/")[0]!)
+                }
+            }) : []; // Extract file keys
+            const allFiles =  [...continueGetAllFiles.keys,...baseFolder]; // Remove base directory from keys
+            if (response.NextContinuationToken) {
+                return await this.getAllFiles(bucket, baseDir, {keys: allFiles, ContinuationToken: response.NextContinuationToken});
+            }
+        }
+      const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: baseDir,
+        MaxKeys: 10000,
+        
+      }); // Create command
+  
+      const response = await this.s3Client.send(command); // Send request
+      response.ContinuationToken;
+      response.Contents ? response.Contents.map(file => file.Key ?? "").filter(key => key !== "").map(file => file.slice(baseDir.length)).forEach((key, i) => {
+        if (key.split("/")[0] && !baseFolder.includes(key.split("/")[0]!)) {
+            baseFolder.push(key.split("/")[0]!)
+        }
+    }) : []; // Extract file key
+      if (response.NextContinuationToken) {
+        return await this.getAllFiles(bucket, baseDir, {keys: baseFolder, ContinuationToken: response.NextContinuationToken});
+      }
+      return baseFolder; // Remove base directory from keys
+    } catch (error) {
+        if (continueGetAllFiles) {
+            return continueGetAllFiles.keys;
+        }
+        throw new Error("Failed to get all files from S3");
+    }
+}
 
   async generatePresignedUrl(
     options: PresignedUrlOptions,
@@ -102,10 +212,9 @@ class CustomS3Uploader {
     }
 
     options.expiresIn = options.expiresIn ?? 60 * 60; // 1 day
-      options.path =
-        options.path ??
-        `uploads/temp/${Date.now()}/${Math.random() * 10000000000000000}/${options.fileName}`;
-
+    options.path =
+      options.path ??
+      `uploads/temp/${Date.now()}/${Math.random() * 10000000000000000}/${options.fileName}`;
 
     const command = new PutObjectCommand({
       Bucket: options.bucket,
@@ -251,7 +360,7 @@ class CustomS3Uploader {
   async deleteFile(bucket: string, key: string): Promise<void> {
     try {
       const fileExists = await this.checkFileExists({ bucket, key });
-      
+
       if (!fileExists) {
         return;
       }
@@ -264,6 +373,21 @@ class CustomS3Uploader {
       await this.s3Client.send(command);
     } catch (error) {
       logger.error("Error deleting file from S3:", error);
+      throw new Error("Failed to delete file from S3");
+    }
+  }
+
+  async deleteFiles(bucket: string, key: string[]): Promise<void> {
+    try {
+      const command = new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: {
+          Objects: key.map(k => ({ Key: k })),
+        },
+      });
+      await this.s3Client.send(command);
+    } catch (error) {
+      logger.error("Error deleting files from S3:", error);
       throw new Error("Failed to delete file from S3");
     }
   }

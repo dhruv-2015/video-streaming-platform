@@ -5,7 +5,7 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button"
 import { UploadDialog } from "../UploadVideoDialog";
 
-export function UploadDialoag() {
+export function UploadDialoag({refetch}: {refetch?: () => void}) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -14,7 +14,7 @@ export function UploadDialoag() {
         <Upload className="mr-2 h-4 w-4" />
         Upload
       </Button>
-      <UploadDialog open={open} onOpenChange={setOpen}/>
+      <UploadDialog open={open} onOpenChange={setOpen} refetchVideos={refetch}/>
     </div>
   );
 }

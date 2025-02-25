@@ -53,6 +53,8 @@ interface PlayerOptions {
   hight?: number;
   width?: number;
   storyboard?: string;
+  autoPlay?: boolean;
+  muted?: boolean;
   subtitles?: Subtitles[];
 }
 
@@ -62,11 +64,12 @@ const Vidstack: React.FC<PlayerOptions> = ({
   src,
   title,
   width,
+  autoPlay,
+  muted = false,
   subtitles,
   storyboard
 }) => {
   const player = useRef<MediaPlayerInstance>(null);
-  const remote = useMediaRemote(player);
   // useEffect(() => {
   //   if (!player.current) {
   //     return;
@@ -78,6 +81,8 @@ const Vidstack: React.FC<PlayerOptions> = ({
   return (
     <div className="">
       <MediaPlayer
+      muted={muted}
+      autoPlay={autoPlay}
         className="rounded-none"
         keyTarget="document"
         ref={player}

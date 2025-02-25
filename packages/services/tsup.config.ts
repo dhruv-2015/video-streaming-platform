@@ -17,7 +17,7 @@ export default defineConfig(options => {
         treeshake: false,
         // metafile: true,
         // skipNodeModulesBundle: true,
-        dts: true,
+        // dts: true,
         minify: false,
         // minify: !options.watch,
         sourcemap: true, // Enable sourcemaps .map files

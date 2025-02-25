@@ -1,10 +1,12 @@
 "use client"
-import React from 'react'
+import React, { useEffect } from 'react'
 import { signOut } from 'next-auth/react'
-import { redirect } from 'next/navigation'
-const page = () => {
-    signOut();
-    redirect('/');
+import { useRouter } from 'next/navigation'
+const page = async () => {
+  const {push} = useRouter()
+    useEffect(() => {
+      signOut().then(() =>push('/'));
+    },[])
   return (
     <></>
   )

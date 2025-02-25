@@ -57,6 +57,7 @@ interface Stream {
   channels?: number;
   r_frame_rate?: string;
   codec_name?: string;
+  pix_fmt?: string;
   tags?: {
     language?: string;
     title?: string;
@@ -374,6 +375,102 @@ interface TranscodeResult {
   };
 }
 
+type SubtitleFormat = string;
+
+class SubtitleFormatChecker {
+  // Formats that can be directly converted to WebVTT
+  private static readonly COMPATIBLE_FORMATS = new Set<SubtitleFormat>([
+    'subrip',           // .srt
+    'ass',             // .ass
+    'ssa',             // .ssa
+    'mov_text',        // QuickTime text
+    'text',            // Raw text
+    'webvtt',          // WebVTT
+    'srt',             // Alternative SRT name
+    'vtt',             // Alternative WebVTT name
+    'subviewer',       // SubViewer
+    'microdvd',        // MicroDVD
+    'subviewer1',      // SubViewer 1.0
+    'jacosub',         // JACOsub
+    'sami',            // SAMI
+    'realtext',        // RealText
+    'stl',             // Spruce Subtitle
+    'ttml',            // TTML
+    'dfxp'             // DFXP/TTML
+  ]);
+
+  // Formats that cannot be converted without OCR
+  private static readonly IMAGE_BASED_FORMATS = new Set<SubtitleFormat>([
+    'hdmv_pgs_subtitle', // Blu-ray PGS
+    'dvd_subtitle',      // DVD subtitles
+    'dvb_subtitle',      // DVB subtitles
+    'pgssub',           // PGS
+    'xsub',             // XSUB
+    'dvb_teletext',     // DVB teletext
+    'cell_image',       // CEL image
+    'imagesub',         // Generic image-based
+    'bdgraphics',       // Blu-ray graphics
+    'sup'               // SUP (Blu-ray)
+  ]);
+
+  /**
+   * Checks if a subtitle format can be converted to WebVTT
+   * @param format The subtitle format/codec name to check
+   * @returns boolean indicating if the format can be converted to WebVTT
+   */
+  public static canConvertToWebVTT(format?: SubtitleFormat): boolean {
+    if (!format) return false;
+    const normalizedFormat = format.toLowerCase().trim();
+    return this.COMPATIBLE_FORMATS.has(normalizedFormat);
+  }
+
+  /**
+   * Checks if a subtitle format is image-based
+   * @param format The subtitle format/codec name to check
+   * @returns boolean indicating if the format is image-based
+   */
+  public static isImageBased(format: SubtitleFormat): boolean {
+    const normalizedFormat = format.toLowerCase().trim();
+    return this.IMAGE_BASED_FORMATS.has(normalizedFormat);
+  }
+
+  /**
+   * Gets detailed information about a subtitle format
+   * @param format The subtitle format/codec name to check
+   * @returns Object containing format compatibility details
+   */
+  public static getFormatInfo(format: SubtitleFormat): {
+    canConvert: boolean;
+    isImageBased: boolean;
+    reason: string;
+  } {
+    const normalizedFormat = format.toLowerCase().trim();
+    
+    if (this.COMPATIBLE_FORMATS.has(normalizedFormat)) {
+      return {
+        canConvert: true,
+        isImageBased: false,
+        reason: 'Text-based format that can be converted to WebVTT'
+      };
+    }
+    
+    if (this.IMAGE_BASED_FORMATS.has(normalizedFormat)) {
+      return {
+        canConvert: false,
+        isImageBased: true,
+        reason: 'Image-based format that requires OCR for conversion'
+      };
+    }
+
+    return {
+      canConvert: false,
+      isImageBased: false,
+      reason: 'Unknown or unsupported format'
+    };
+  }
+}
+
+
 export class VideoTranscoder {
   private ffmpegWrapper: FfmpegWrapper;
   constructor(
@@ -532,6 +629,7 @@ export class VideoTranscoder {
 
   private getSubtitleCodecInfo(stream: Stream): SubtitleCodecInfo {
     const subtitleFormat = stream.codec_name?.toLowerCase() || "";
+    return { codec: "webvtt", outputFormat: "vtt" };
 
     if (["subrip", "srt"].includes(subtitleFormat)) {
       return { codec: "webvtt", outputFormat: "vtt" };
@@ -543,6 +641,7 @@ export class VideoTranscoder {
     } else {
       // For other formats, attempt to convert to SRT
       return { codec: "webvtt", outputFormat: "vtt" };
+      
       // return { codec: "srt", outputFormat: "srt" };
     }
   }
@@ -869,10 +968,13 @@ export class VideoTranscoder {
       subtitle: [],
     };
 
+    // Check if video is 10-bit
+    const is10Bit = videoStream.pix_fmt?.includes('p10');
+    
     if (!this.GPU) {
       logger.info("GPU is not enabled");
       filterComplex.push([
-        `[0:v]split=${resolutions.length}${Array.from(
+        `[0:v]${is10Bit ? 'format=yuv420p,' : ''}split=${resolutions.length}${Array.from(
           { length: resolutions.length },
           (_, i) => `[v${i}]`
         ).join("")}`,
@@ -884,7 +986,7 @@ export class VideoTranscoder {
           const start = i * 3;
           const end = Math.min(start + 3, resolutions.length);
           return [
-            `[0:v]split=${end - start}${Array.from(
+            `[0:v]${is10Bit ? 'format=yuv420p,' : ''}split=${end - start}${Array.from(
               { length: end - start },
               (_, j) => `[v${start + j}]`
             ).join("")}`,
@@ -990,7 +1092,7 @@ export class VideoTranscoder {
       }
       const language = this.getLanguageCode(stream.tags?.language);
       // const language = (stream.tags?.language && stream.tags?.language != "und") ? stream.tags?.language : "eng";
-      const title = stream.tags?.title || `Audio_Track_${index + 1}`;
+      const title = stream.tags?.title || `Audio_Track_${index + 1} ${language}`;
       const channels = stream.channels ?? 2;
       filterComplex[totalParts];
 
@@ -1262,6 +1364,10 @@ export class VideoTranscoder {
     subtitleStreams.map((stream, index) => {
       const language = stream.tags?.language || "eng";
       const title = stream.tags?.title || `Subtitle_Track_${index + 1}`;
+      const canConvert = SubtitleFormatChecker.canConvertToWebVTT(stream.codec_name?.toLowerCase());
+      if (!canConvert) {
+        return;
+      }
 
       const { codec, outputFormat } = this.getSubtitleCodecInfo(stream);
 

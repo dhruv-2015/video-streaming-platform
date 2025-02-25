@@ -1,151 +1,129 @@
-'use client'
-import React from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+"use client";
+import React from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { useState, useEffect } from "react"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Plus, Upload } from "lucide-react"
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from "@/lib/utils"
-import { PlaylistSelector } from "./PlaylistSelector"
-import Analytics from "./Analytics"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert"
-import Image from "next/image"
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Plus, Upload } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
+// import { PlaylistSelector } from "./PlaylistSelector"
+import Analytics from "./Analytics";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { PlaylistSelector } from "@/components/PlaylistSelector/page";
 
-type Visibility = 'PUBLIC' | 'PRIVATE' | 'UNLISTED'
+type Visibility = "PUBLIC" | "PRIVATE" | "UNLISTED";
 
-const VideoDetailsPage = () => {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'details'
+const VideoDetailsPage = ({ params }: { params: { video_id: string } }) => {
+  const router = useRouter();
+  const { video_id } = params;
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [visibility, setVisibility] = useState<Visibility>('UNLISTED')
-  const [currentTag, setCurrentTag] = useState('')
-  const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>([])
-  const [playlistSearch, setPlaylistSearch] = useState('')
-  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false)
-  const [newPlaylistName, setNewPlaylistName] = useState('')
-  const [showNewPlaylistInput, setShowNewPlaylistInput] = useState(false)
-  const [isPublished, setIsPublished] = useState(false)
-  const [publishedAt, setPublishedAt] = useState<Date | null>(null)
-  const [thumbnail, setThumbnail] = useState<string | null>(null)
-  const [showThumbnailDialog, setShowThumbnailDialog] = useState(false)
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "details";
 
-  // Sample playlists data - replace with your actual data
-  const playlists = [
-    { id: '1', name: 'Web dev' },
-    { id: '2', name: 'Rusty' },
-    { id: '3', name: 'Find Manga and continue' },
-    { id: '4', name: 'Machine learning projects' },
-    { id: '5', name: 'React native' },
-    { id: '6', name: 'Best songs' },
-    // ... add more playlists
-  ]
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<Visibility>("UNLISTED");
+  const [currentTag, setCurrentTag] = useState("");
+  const [isPublished, setIsPublished] = useState(false);
+  const [publishedAt, setPublishedAt] = useState<Date | null>(null);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [showThumbnailDialog, setShowThumbnailDialog] = useState(false);
+
+
 
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value.endsWith(' ')) {
-      addTag(value)
+    const value = e.target.value;
+    if (value.endsWith(" ")) {
+      addTag(value);
     } else {
-      setCurrentTag(value)
+      setCurrentTag(value);
     }
-  }
+  };
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addTag(currentTag)
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag(currentTag);
     }
-  }
+  };
 
   const addTag = (value: string) => {
-    const newTag = value.trim()
+    const newTag = value.trim();
     if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag])
+      setTags([...tags, newTag]);
     }
-    setCurrentTag('')
-  }
+    setCurrentTag("");
+  };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove))
-  }
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
 
-  const togglePlaylist = (playlistId: string) => {
-    setSelectedPlaylists(prev => 
-      prev.includes(playlistId)
-        ? prev.filter(id => id !== playlistId)
-        : [...prev, playlistId]
-    )
-  }
-
-  const filteredPlaylists = playlists.filter(playlist =>
-    playlist.name.toLowerCase().includes(playlistSearch.toLowerCase())
-  )
 
   const handleTabChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', value)
-    router.push(`?${params.toString()}`)
-  }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", value);
+    router.push(`?${params.toString()}`);
+  };
 
   const handlePublishToggle = (checked: boolean) => {
     if (checked) {
       // Show confirmation dialog before publishing
-      if (window.confirm('Are you sure you want to publish this video?')) {
-        setIsPublished(true)
-        setPublishedAt(new Date())
+      if (window.confirm("Are you sure you want to publish this video?")) {
+        setIsPublished(true);
+        setPublishedAt(new Date());
       }
     } else {
       // Show confirmation dialog before unpublishing
-      if (window.confirm('Are you sure you want to unpublish this video?')) {
-        setIsPublished(false)
+      if (window.confirm("Are you sure you want to unpublish this video?")) {
+        setIsPublished(false);
       }
     }
-  }
+  };
 
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file)
-      setThumbnail(objectUrl)
-      setShowThumbnailDialog(false)
+      const objectUrl = URL.createObjectURL(file);
+      setThumbnail(objectUrl);
+      setShowThumbnailDialog(false);
 
-      return () => URL.revokeObjectURL(objectUrl)
+      return () => URL.revokeObjectURL(objectUrl);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto p-6">
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -157,20 +135,24 @@ const VideoDetailsPage = () => {
             <div className="md:col-span-2 space-y-6">
               <Card className="p-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Title</label>
-                  <Input 
-                    placeholder="Add a title that describes your video" 
+                  <label className="text-sm font-medium mb-2 block">
+                    Title
+                  </label>
+                  <Input
+                    placeholder="Add a title that describes your video"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={e => setTitle(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Description</label>
-                  <Textarea 
+                  <label className="text-sm font-medium mb-2 block">
+                    Description
+                  </label>
+                  <Textarea
                     placeholder="Tell viewers about your video"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={e => setDescription(e.target.value)}
                     rows={6}
                   />
                 </div>
@@ -180,7 +162,7 @@ const VideoDetailsPage = () => {
                   <p className="text-sm text-muted-foreground">
                     Select or upload a picture that shows what's in your video
                   </p>
-                  
+
                   <div className="border rounded-lg p-4">
                     {thumbnail ? (
                       <div className="space-y-4">
@@ -192,7 +174,10 @@ const VideoDetailsPage = () => {
                             className="object-cover"
                           />
                         </div>
-                        <Dialog open={showThumbnailDialog} onOpenChange={setShowThumbnailDialog}>
+                        <Dialog
+                          open={showThumbnailDialog}
+                          onOpenChange={setShowThumbnailDialog}
+                        >
                           <DialogTrigger asChild>
                             <Button variant="outline" className="w-[320px]">
                               Change thumbnail
@@ -211,7 +196,10 @@ const VideoDetailsPage = () => {
                                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                                     <p className="mb-2 text-sm text-muted-foreground">
-                                      <span className="font-semibold">Click to upload</span> or drag and drop
+                                      <span className="font-semibold">
+                                        Click to upload
+                                      </span>{" "}
+                                      or drag and drop
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                       PNG, JPG or WEBP (MAX. 2MB)
@@ -231,13 +219,19 @@ const VideoDetailsPage = () => {
                         </Dialog>
                       </div>
                     ) : (
-                      <Dialog open={showThumbnailDialog} onOpenChange={setShowThumbnailDialog}>
+                      <Dialog
+                        open={showThumbnailDialog}
+                        onOpenChange={setShowThumbnailDialog}
+                      >
                         <DialogTrigger asChild>
                           <div className="flex flex-col items-center justify-center w-[320px] h-44 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/60">
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                               <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                               <p className="mb-2 text-sm text-muted-foreground">
-                                <span className="font-semibold">Click to upload</span> or drag and drop
+                                <span className="font-semibold">
+                                  Click to upload
+                                </span>{" "}
+                                or drag and drop
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 PNG, JPG or WEBP (MAX. 2MB)
@@ -258,7 +252,10 @@ const VideoDetailsPage = () => {
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                   <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                                   <p className="mb-2 text-sm text-muted-foreground">
-                                    <span className="font-semibold">Click to upload</span> or drag and drop
+                                    <span className="font-semibold">
+                                      Click to upload
+                                    </span>{" "}
+                                    or drag and drop
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     PNG, JPG or WEBP (MAX. 2MB)
@@ -281,21 +278,26 @@ const VideoDetailsPage = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Playlists</label>
-                  <PlaylistSelector />
+                  <label className="text-sm font-medium mb-2 block">
+                    Playlists
+                  </label>
+                  <PlaylistSelector 
+                    video_id={video_id?.toString()!}
+                  />
+                  {/* <PlaylistSelector video_id={video_id?.toString()!} /> */}
                 </div>
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Tags</label>
-                  <Input 
+                  <Input
                     placeholder="Add tags (space or enter after each tag)"
                     value={currentTag}
                     onChange={handleTagInput}
                     onKeyDown={handleTagKeyDown}
                   />
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {tags.map((tag) => (
-                      <Badge 
+                    {tags.map(tag => (
+                      <Badge
                         key={tag}
                         variant="secondary"
                         className="cursor-pointer"
@@ -315,13 +317,13 @@ const VideoDetailsPage = () => {
                 <div className="aspect-video bg-slate-200 mb-4">
                   {/* Video Preview */}
                 </div>
-                
+
                 <div className="space-y-6">
                   {/* Publish Switch */}
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between space-x-2">
                       <Label htmlFor="publish" className="font-medium">
-                        {isPublished ? 'Published' : 'Draft'}
+                        {isPublished ? "Published" : "Draft"}
                       </Label>
                       <Switch
                         id="publish"
@@ -329,13 +331,14 @@ const VideoDetailsPage = () => {
                         onCheckedChange={handlePublishToggle}
                       />
                     </div>
-                    
+
                     {isPublished && publishedAt && (
                       <Alert>
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Published</AlertTitle>
                         <AlertDescription>
-                          This video was published on {publishedAt.toLocaleDateString()} at{' '}
+                          This video was published on{" "}
+                          {publishedAt.toLocaleDateString()} at{" "}
                           {publishedAt.toLocaleTimeString()}
                         </AlertDescription>
                       </Alert>
@@ -344,10 +347,14 @@ const VideoDetailsPage = () => {
 
                   {/* Visibility Selector */}
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Visibility</label>
-                    <Select 
-                      value={visibility} 
-                      onValueChange={(value: Visibility) => setVisibility(value)}
+                    <label className="text-sm font-medium mb-2 block">
+                      Visibility
+                    </label>
+                    <Select
+                      value={visibility}
+                      onValueChange={(value: Visibility) =>
+                        setVisibility(value)
+                      }
                       disabled={!isPublished} // Disable visibility selection when not published
                     >
                       <SelectTrigger>
@@ -368,7 +375,9 @@ const VideoDetailsPage = () => {
 
                   {/* Subtitles section remains the same */}
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Subtitles</label>
+                    <label className="text-sm font-medium mb-2 block">
+                      Subtitles
+                    </label>
                     <div className="text-sm text-gray-500">
                       No subtitles available
                     </div>
@@ -384,7 +393,7 @@ const VideoDetailsPage = () => {
         </TabsContent>
       </Tabs>
     </div>
-  )
-}
+  );
+};
 
-export default VideoDetailsPage
+export default VideoDetailsPage;

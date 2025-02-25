@@ -74,6 +74,8 @@ export const channelRouter = router({
         });
       }
       const is_creater = channel.user_id == ctx.session?.user.id;
+      console.log(is_creater);
+      
       const whereCondition: any = {
         channel_id: channel.id,
         is_deleted: false,

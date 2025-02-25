@@ -99,6 +99,7 @@ export class RecomandationSystem {
       throw new Error("Collection not initialized");
     }
     try {
+
       await this.video_collection.delete({
         ids: [video_id],
       });
@@ -120,7 +121,12 @@ export class RecomandationSystem {
         nResults: Number(limit),
       });
 
-      return res.ids.map(id => id.toString());
+      console.log(res.ids, "res.ids");
+      
+      if (res.ids[0]) {
+        return res.ids[0].map(id => id.toString());
+      }
+      return [] as string[];
       // .ids.map(id => id.toString());
     } catch (error) {
       logger.error("RecomandationSystem.getRecomandations", error);

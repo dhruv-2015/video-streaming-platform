@@ -11,7 +11,9 @@ export {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  // type Row,
 } from "@tanstack/react-table"
+
 
 import { cn } from "@workspace/ui/lib/utils"
 

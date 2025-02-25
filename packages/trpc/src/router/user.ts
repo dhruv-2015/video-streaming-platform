@@ -119,8 +119,8 @@ export const userRouter = router({
       });
       if (!user) {
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "User not found",
+          code: "UNAUTHORIZED",
+          message: "You are not authorized to perform this action",
         });
       }
       return {

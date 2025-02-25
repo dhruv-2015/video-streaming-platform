@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, History, Home, Menu, ThumbsUp, Video,MonitorPlay } from "lucide-react";
+import { Clock, History, Home, Menu, ThumbsUp, Video,MonitorPlay, Plus,  } from "lucide-react";
 
 // import { NavMain } from "@/components/nav-main";
 // import { NavProjects } from "@/components/nav-projects";
@@ -81,6 +81,20 @@ export function AppSidebar() {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            
+            {/* <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+            <SidebarGroupLabel>Playlists</SidebarGroupLabel> */}
+            {/* <SidebarMenu> */}
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Playlist" asChild>
+                  <Link href="/playlist">
+                    <Plus className="mr-2 h-4 w-4" />
+                    <span>Playlists</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            {/* </SidebarMenu> */}
+          {/* </SidebarGroup> */}
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Watch later" asChild>

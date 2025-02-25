@@ -3,11 +3,12 @@ import React, { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Markdown from 'markdown-to-jsx'
+import { fixNumber } from '@/lib/utils'
 
 interface VideoDescriptionProps {
   description: string
-  views: string
-  uploadDate: string
+  views: number
+  uploadDate: Date
 }
 
 export function VideoDescription({ description, views, uploadDate }: VideoDescriptionProps) {
@@ -16,9 +17,9 @@ export function VideoDescription({ description, views, uploadDate }: VideoDescri
   return (
     <div className="bg-muted/30 rounded-xl p-4 mb-4">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-muted-foreground">{views} views</span>
+        <span className="text-muted-foreground">{fixNumber(views)} views</span>
         <span>•</span>
-        <span className="text-muted-foreground">{uploadDate}</span>
+        <span className="text-muted-foreground">{uploadDate.toLocaleDateString()}</span>
       </div>
       <div className={`${!isExpanded && 'line-clamp-2'}`}>
         <Markdown>{description}</Markdown>

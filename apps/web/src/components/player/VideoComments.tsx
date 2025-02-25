@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Send, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { trpc } from "@/trpc/client";
 
 interface Comment {
   id: number;
@@ -24,6 +25,7 @@ interface Reply {
 }
 
 export function CommentSection() {
+  // trpc
   const [commentText, setCommentText] = useState("");
   const [showReplies, setShowReplies] = useState<{
     [key: number | string]: boolean;

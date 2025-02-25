@@ -124,8 +124,8 @@ model Video {
   is_uploaded        Boolean           @default(false)
   VideoFile          VideoFile?
   VideoView          VideoView[]       @ignore
-  VideoLike          VideoLike[]       @ignore
-  VideoDissLike      VideoDissLike[]   @ignore
+  VideoLike          VideoLike[]
+  VideoDissLike      VideoDissLike[]
   VideoComment       VideoComment[]
   video_tags_id      String[]          @db.ObjectId
   VideoTags          VideoTags[]       @relation(fields: [video_tags_id], references: [id])
@@ -260,12 +260,19 @@ model VideoComment {
   User                 User                   @relation(fields: [user_id], references: [id])
   parent_id            String?                @db.ObjectId
   Parent               VideoComment?          @relation("CommentParent", fields: [parent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  is_deleted           Boolean                @default(false)
+  is_edited            Boolean                @default(false)
+  total_reply          Int                    @default(0)
   text                 String
   createdAt            DateTime               @default(now())
+  like_count           Int                    @default(0)
+  dislike_count        Int                    @default(0)
   updatedAt            DateTime               @updatedAt
-  VideoComment         VideoComment[]         @relation("CommentParent")
-  VideoCommentLike     VideoCommentLike[]     @ignore
-  VideoCommentDissLike VideoCommentDissLike[] @ignore
+  VideoComment         VideoComment[]         @relation("CommentParent") @ignore
+  VideoCommentLike     VideoCommentLike[]
+  VideoCommentDissLike VideoCommentDissLike[]
+
+  @@unique([video_id, user_id])
 }
 
 model VideoCommentLike {
@@ -273,6 +280,7 @@ model VideoCommentLike {
   comment_id String       @db.ObjectId
   Comment    VideoComment @relation(fields: [comment_id], references: [id])
   user_id    String       @db.ObjectId
+  video_id   String       @db.ObjectId
   User       User         @relation(fields: [user_id], references: [id])
   assignedAt DateTime     @default(now())
 
@@ -284,6 +292,7 @@ model VideoCommentDissLike {
   comment_id String       @db.ObjectId
   Comment    VideoComment @relation(fields: [comment_id], references: [id])
   user_id    String       @db.ObjectId
+  video_id   String       @db.ObjectId
   User       User         @relation(fields: [user_id], references: [id])
   assignedAt DateTime     @default(now())
 
@@ -339,7 +348,7 @@ model Playlist {
   creater_id    String          @db.ObjectId
   creater       User            @relation(fields: [creater_id], references: [id])
   name          String
-  image         S3File?
+  description   String          @default("")
   is_private    Boolean         @default(true)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -352,7 +361,7 @@ model PlaylistVideo {
   playlist    Playlist @relation(fields: [playlist_id], references: [id])
   video_id    String   @db.ObjectId
   video       Video    @relation(fields: [video_id], references: [id])
-  index       Int      @default(0)
+  index       Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

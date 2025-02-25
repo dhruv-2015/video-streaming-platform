@@ -14,6 +14,7 @@ import { auth } from "@/auth";
 import { isTRPCClientError, trpcServerClient } from "@/trpc/server";
 import UserFetcher from "@/components/userFetcher";
 import { RouterOutputs } from "@workspace/trpc";
+import { redirect } from "next/navigation";
 
 
 // const fontSans = Geist({
@@ -47,7 +48,14 @@ export default async function RootLayout({
       user = await trpcServerClient.user.getMe.query(undefined);
     } catch (error) {
       if (isTRPCClientError(error)) {
-        console.log(error, "trpcServerClient.user.getMe");
+        if (error.data?.code === "UNAUTHORIZED") {
+          // return redirect("/logout")
+          // return <Providers>
+          //   <UserFetcher logout={true} user={user!} />
+          //   </Providers>
+        } else {
+          console.log(error, "trpcServerClient.user.getMe")
+        }
         
       }
     }

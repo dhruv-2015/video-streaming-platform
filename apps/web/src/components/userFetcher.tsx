@@ -5,8 +5,10 @@ import { useAppDispatch } from "@/redux/store";
 import { RouterOutputs } from "@workspace/trpc";
 import React from "react";
 
-const UserFetcher = ({ user }: { user: RouterOutputs["user"]["getMe"] }) => {
+const UserFetcher = ({ user, logout = false }: { user: RouterOutputs["user"]["getMe"], logout?: boolean }) => {
+
   const dispatch = useAppDispatch();
+
   //   const user = trpcServerClient.user.getMe.query(undefined);
   dispatch(
     setUser({

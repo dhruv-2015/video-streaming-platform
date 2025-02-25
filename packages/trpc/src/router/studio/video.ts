@@ -70,6 +70,198 @@ export const videoRouter = router({
         });
       }
     }),
+  getVideo: protectedApiChannelProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: "/channel/video/{video_id}",
+        summary: "Get video by id",
+        description: "Get video by id for channel owner",
+        protect: true,
+        tags: ["video"],
+      },
+    })
+    .input(
+      z.object({
+        video_id: z.string(),
+      }),
+    )
+    .output(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        description: z.string(),
+        is_ready: z.boolean(),
+        thumbnail: z.string(),
+        like_count: z.number(),
+        disslike_count: z.number(),
+        is_like: z.boolean(),
+        visibility: z.enum(["PUBLIC", "PRIVATE", "UNLISTED"]),
+        is_disslike: z.boolean(),
+        upload_at: z.date(),
+        is_published: z.boolean(),
+        published_at: z.date().nullable(),
+        view_count: z.number(),
+        duration: z
+          .number({
+            description: "Duration in seconds",
+          })
+          .nullable(),
+        channel: z.object({
+          id: z.string(),
+          name: z.string(),
+          image: z.string(),
+          subscriber_count: z.number(),
+          slug: z.string(),
+        }),
+        tags: z.array(z.string()),
+        stream: z
+          .object({
+            m3u8: z.string(),
+            storyboard: z.string(),
+            audio_channels: z.number(),
+            subtitle_channels: z.number(),
+            subtitles: z.array(
+              z.object({
+                src: z.string(),
+                default: z.boolean(),
+                type: z.string(),
+                label: z.string(),
+                language: z.string(),
+              }),
+            ),
+          })
+          .nullable(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.channel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Channel not found",
+        });
+      }
+      try {
+        const video = await prisma.video.findUnique({
+          where: {
+            id: input.video_id,
+            is_deleted: false,
+          },
+          include: {
+            channel: {
+              select: {
+                name: true,
+                id: true,
+                image: true,
+                slug: true,
+                subscriber_count: true,
+                user_id: true,
+              },
+            },
+            VideoFile: {
+              select: {
+                audio_channels: true,
+                subtitle_channels: true,
+                duration: true,
+                id: true,
+                m3u8: true,
+                subtitle: true,
+                storyboard: true,
+              },
+            },
+            VideoTags: {
+              select: {
+                tag: true,
+              },
+            },
+            VideoLike: {
+              where: {
+                user_id: ctx.session?.user.id,
+              },
+            },
+            VideoDissLike: {
+              where: {
+                user_id: ctx.session?.user.id,
+              },
+            },
+          },
+        });
+        if (!video) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Video not found",
+          });
+        }
+        if (video.channel.user_id !== ctx.session.user.id) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not allowed to access this video",
+          });
+        }
+
+        return {
+          id: video.id,
+          title: video.title,
+          is_ready: video.is_ready,
+          description: video.description,
+          upload_at: video.published_at ?? video.createdAt,
+          thumbnail: video.thumbnail
+            ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.thumbnail.key}`
+            : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
+          like_count: Number(video.like_count),
+          disslike_count: Number(video.dislike_count),
+          view_count: Number(video.view_count),
+          visibility: video.video_type as "PUBLIC" | "PRIVATE" | "UNLISTED",
+          duration: video.VideoFile ? video.VideoFile.duration : null,
+          is_published: video.is_published,
+          published_at: video.published_at,
+          channel: {
+            id: video.channel.id,
+            name: video.channel.name,
+            subscriber_count: video.channel.subscriber_count,
+            slug: video.channel.slug,
+            image: video.channel.image
+              ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.channel.image.key}`
+              : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
+          },
+          tags: video.VideoTags.map(tag => tag.tag),
+          is_like: video.VideoLike.length > 0,
+          is_disslike: video.VideoDissLike.length > 0,
+          stream: video.VideoFile
+            ? {
+                m3u8: video.VideoFile.m3u8
+                  ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.VideoFile.m3u8.key}`
+                  : "",
+                storyboard: video.VideoFile.storyboard
+                  ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.VideoFile.storyboard.vtt.key}`
+                  : "",
+                subtitles: video.VideoFile.subtitle
+                  ? video.VideoFile.subtitle.map(sub => {
+                      return {
+                        src: `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${sub.url.key}`,
+                        default: sub.default,
+                        type: sub.type,
+                        label: sub.label,
+                        language: sub.language,
+                      };
+                    })
+                  : [],
+                audio_channels: video.VideoFile.audio_channels,
+                subtitle_channels: video.VideoFile.subtitle_channels,
+              }
+            : null,
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        logger.error("video.getVideo", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong",
+        });
+      }
+    }),
 
   updateTags: protectedApiChannelProcedure
     .meta({
@@ -137,6 +329,8 @@ export const videoRouter = router({
             },
             select: {
               title: true,
+              is_published: true,
+              video_type: true,
               VideoTags: {
                 select: {
                   tag: true,
@@ -146,12 +340,16 @@ export const videoRouter = router({
               id: true,
             },
           });
-          await recomandationSystem.addOrUpdateVideo(
-            video.id,
-            video.title,
-            video.description,
-            video.VideoTags.map(vt => vt.tag),
-          );
+          if (video.is_published && video.video_type === "PUBLIC") {
+            await recomandationSystem.addOrUpdateVideo(
+              video.id,
+              video.title,
+              video.description,
+              video.VideoTags.map(vt => vt.tag),
+            );
+          } else {
+            await recomandationSystem.deleteVideo(video.id);
+          }
           return;
         });
 
@@ -164,12 +362,15 @@ export const videoRouter = router({
         });
       }
     }),
-    updateVideo: protectedApiChannelProcedure
-    .input(z.object({
-      video_id: z.string(),
-      title: z.string(),
-      description: z.string(),
-    })).mutation(async ({ ctx, input }) => {
+  updateVideo: protectedApiChannelProcedure
+    .input(
+      z.object({
+        video_id: z.string(),
+        title: z.string(),
+        description: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
       if (!ctx.channel) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -182,15 +383,15 @@ export const videoRouter = router({
           where: {
             id: input.video_id,
             channel_id: ctx.channel.id,
-          }
-        })
+          },
+        });
         if (!video) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Video not found",
           });
         }
-        await prisma.video.update({
+        const newVid = await prisma.video.update({
           where: {
             id: input.video_id,
             channel_id: ctx.channel.id,
@@ -199,7 +400,29 @@ export const videoRouter = router({
             title: input.title,
             description: input.description,
           },
+          select: {
+            title: true,
+            is_published: true,
+            video_type: true,
+            VideoTags: {
+              select: {
+                tag: true,
+              },
+            },
+            description: true,
+            id: true,
+          },
         });
+        if (newVid.is_published && newVid.video_type === "PUBLIC") {
+          await recomandationSystem.addOrUpdateVideo(
+            newVid.id,
+            newVid.title,
+            newVid.description,
+            newVid.VideoTags.map(vt => vt.tag),
+          );
+        } else {
+          await recomandationSystem.deleteVideo(video.id);
+        }
         return;
       } catch (error) {
         if (error instanceof TRPCError) {
@@ -347,7 +570,7 @@ export const videoRouter = router({
           message: "Channel not found",
         });
       }
-      
+
       try {
         const video = await prisma.video.findUnique({
           where: {
@@ -371,12 +594,12 @@ export const videoRouter = router({
             id: input.fileId,
           },
         });
-        
+
         if (!videoFile) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message:
-            "Video file not found on server. please upload video first",
+              "Video file not found on server. please upload video first",
           });
         }
         try {
@@ -387,34 +610,32 @@ export const videoRouter = router({
           console.log("verifyVideoUpload debug");
           if (res) {
             try {
-              await prisma.$transaction(async p => {
-                await p.video.update({
-                  where: {
-                    id: input.video_id,
-                  },
-                  data: {
-                    orignal_file: {
-                      bucket: env.S3_VIDEO_BUCKET,
-                      key: `video/${video.id}${path.extname(videoFile.key)}`,
-                    },
-                    is_uploaded: true,
-                  },
-                });
-                await customS3Uploader.copyObject(
-                  {
-                    bucket: videoFile.bucket,
-                    key: videoFile.key,
-                  },
-                  {
+              await prisma.video.update({
+                where: {
+                  id: input.video_id,
+                },
+                data: {
+                  orignal_file: {
                     bucket: env.S3_VIDEO_BUCKET,
                     key: `video/${video.id}${path.extname(videoFile.key)}`,
                   },
-                );
-
-                await transcodeVideo(input.video_id, {
+                  is_uploaded: true,
+                },
+              });
+              await customS3Uploader.copyObject(
+                {
+                  bucket: videoFile.bucket,
+                  key: videoFile.key,
+                },
+                {
                   bucket: env.S3_VIDEO_BUCKET,
                   key: `video/${video.id}${path.extname(videoFile.key)}`,
-                });
+                },
+              );
+
+              await transcodeVideo(input.video_id, {
+                bucket: env.S3_VIDEO_BUCKET,
+                key: `video/${video.id}${path.extname(videoFile.key)}`,
               });
             } catch (error) {
               logger.error("channel.video.verifyVideoUpload", error);
@@ -467,7 +688,9 @@ export const videoRouter = router({
         video_id: z.string(),
       }),
     )
-    .output(z.string().optional())
+    .output(z.object({
+      published_at: z.date(),
+    }))
     .query(async ({ ctx, input }) => {
       if (!ctx.channel) {
         throw new TRPCError({
@@ -515,17 +738,91 @@ export const videoRouter = router({
             },
           },
         });
+        if (video.is_ready) {
+          await recomandationSystem.addOrUpdateVideo(
+            video.id,
+            video.title,
+            video.description,
+            newVid.VideoTags.map(vt => vt.tag),
+          );
+        }
 
-        await recomandationSystem.addOrUpdateVideo(
-          video.id,
-          video.title,
-          video.description,
-          newVid.VideoTags.map(vt => vt.tag),
-        );
-
-        return "Video published successfully";
+        return {
+          published_at: newVid.published_at!,
+        };
       } catch (error) {
         logger.error("channel.video.publishVideo", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "something went wrong while publishing video",
+        });
+      }
+    }),
+
+    changeVisibility: protectedApiChannelProcedure
+    .input(z.object({
+      video_id: z.string(),
+      visibility: z.enum(["PUBLIC", "PRIVATE", "UNLISTED"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.channel) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "you are not authorized to perform this action",
+        });
+      }
+      try {
+        const video = await prisma.video.findUnique({
+          where: {
+            id: input.video_id,
+          },
+        });
+        if (!video || video.channel_id !== ctx.channel.id) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "you are not authorized to perform this action",
+          });
+        }
+        if (!video.is_uploaded) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Video is not uploaded. please upload video first",
+          });
+        }
+
+        const newVid = await prisma.video.update({
+          where: {
+            id: input.video_id,
+          },
+          data: {
+            video_type: input.visibility,
+          },
+          select: {
+            id: true,
+            is_ready: true,
+            is_published: true,
+            video_type: true,
+            title: true,
+            description: true,
+            VideoTags: {
+              select: {
+                tag: true,
+              },
+            },
+          }
+        });
+        if (newVid.is_published && newVid.video_type === "PUBLIC") {
+          await recomandationSystem.addOrUpdateVideo(
+            newVid.id,
+            newVid.title,
+            newVid.description,
+            newVid.VideoTags.map(vt => vt.tag),
+          );
+        } else {
+          await recomandationSystem.deleteVideo(newVid.id);
+        }
+      } catch (error) {
+        logger.error("channel.video.changeVisibility", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "something went wrong while publishing video",
@@ -713,7 +1010,7 @@ export const videoRouter = router({
           },
           {
             bucket: env.S3_VIDEO_BUCKET,
-            key: `thumbnail/${video.id}.${path.extname(file.key)}`,
+            key: `thumbnail/${video.id}${path.extname(file.key)}`,
           },
         );
 

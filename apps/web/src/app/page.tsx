@@ -3,16 +3,11 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 // import { LatestPost } from "@/app/_components/post";
 // import { auth } from "@/auth";
-// import { trpc } from "@/trpc/client";
-import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
-import { User, VideoOff } from "lucide-react";
+import { trpcServerClient } from "@/trpc/server";
 import VideoCart from "@/components/Home/videoCart";
-import { useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
 
 type Videos = {
-  id: string | number
+  id: string
   title: string
   thumbnail: string
   channel_thumbnail: string
@@ -24,17 +19,17 @@ type Videos = {
 }
 const mockVideos: Videos[] = [
   {
-    id: 1,
+    id: "1",
     title: "Getting Started with Next.js 13",
     thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_name: "Tech Tutorials",
     channel_slug: "Tech Tutorials",
-    views: "125K",
+    views: "125K views",
     timestamp: "2 days ago",
   },
   {
-    id: 2,
+    id: "2",
     title: "Cooking Masterclass",
     thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_thumbnail: "https://picsum.photos/seed/1/360/200",
@@ -44,7 +39,7 @@ const mockVideos: Videos[] = [
     timestamp: "1 week ago",
   },
   {
-    id: 3,
+    id: "3",
     title: "Tech Review 2023",
     thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_thumbnail: "https://picsum.photos/seed/1/360/200",
@@ -54,7 +49,7 @@ const mockVideos: Videos[] = [
     timestamp: "3 days ago",
   },
   {
-    id: 4,
+    id: "4",
     title: "Travel Vlog: Paris",
     thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_thumbnail: "https://picsum.photos/seed/1/360/200",
@@ -64,7 +59,7 @@ const mockVideos: Videos[] = [
     timestamp: "1 month ago",
   },
   {
-    id: 5,
+    id: "5",
     title: "Fitness Workout",
     thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_thumbnail: "https://picsum.photos/seed/1/360/200",
@@ -74,7 +69,7 @@ const mockVideos: Videos[] = [
     timestamp: "5 days ago",
   },
   {
-    id: 6,
+    id: "6",
     title: "Music Concert Highlights",
     thumbnail: "https://picsum.photos/seed/1/360/200",
     channel_thumbnail: "https://picsum.photos/seed/1/360/200",
@@ -87,66 +82,17 @@ const mockVideos: Videos[] = [
 ];
 
 export default async function Home() {
-  const user = useSelector((state: RootState) => state.user);
-  // const {data, isLoading} = await trpc.hello.useQuery("world");
-  // const session = await auth();
-  // setTimeout(() => {  throw new Error("IDk lol")}, 1000);
+  // trpcServerClient
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {JSON.stringify(user)}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5  gap-4">
+    <div className={`container mx-auto mt-5`}>
+    {/* <div className={`${!open ? "container" : "px-5"} mx-auto mt-5`}> */}
+      <div className="hidden container"></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {mockVideos.map(video => (
           <VideoCart key={video.id} video={video} />
         ))}
       </div>
-      {/* <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-        <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-          Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-        </h1>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-          <Link
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-            href="https://create.t3.gg/en/usage/first-steps"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">First Steps →</h3>
-            <div className="text-lg">
-              Just the basics - Everything you need to know to set up your
-              database and authentication.
-            </div>
-          </Link>
-          <Link
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-            href="https://create.t3.gg/en/introduction"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">Documentation →</h3>
-            <div className="text-lg">
-              Learn more about Create T3 App, the libraries it uses, and how
-              to deploy it.
-            </div>
-          </Link>
-        </div> */}
-      {/* <div className="flex flex-col items-center gap-2">
-          <p className="text-2xl text-white">
-            {!isLoading ? data : "Loading tRPC query..."}
-          </p>
-
-          <div className="flex flex-col items-center justify-center gap-4">
-            <p className="text-center text-2xl text-white">
-              {session && <span>Logged in as {session.user?.name}</span>}
-            </p>
-            <Link
-              href={session ? "/api/auth/signout" : "/api/auth/signin"}
-              className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-            >
-              {session ? "Sign out" : "Sign in"}
-            </Link>
-          </div>
-        </div>
-
-      </div> */}
     </div>
   );
 }

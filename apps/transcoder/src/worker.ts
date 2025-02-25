@@ -5,6 +5,7 @@ import { Filamanager } from "./FileManager";
 import path from "path";
 import logger from "./logger";
 import { env } from "@workspace/env";
+import { recomandationSystem } from "@workspace/services";
 interface MyData {
   file: {
     key: string;
@@ -131,14 +132,36 @@ export const worker = new Worker<MyData>(
                   })),
                 },
               });
-              await prisma.video.update({
+              const newVid = await prisma.video.update({
                 where: {
                   id: job.data.video_id,
                 },
                 data: {
                   is_ready: true,
                 },
+                select: {
+                  is_published: true,
+                  id: true,
+                  video_type: true,
+                  title: true,
+                  description: true,
+                  VideoTags: {
+                    select: {
+                      tag: true,
+                    },
+                  },
+                }
               });
+
+              
+              if (newVid.is_published && newVid.video_type === "PUBLIC") {
+                await recomandationSystem.addOrUpdateVideo(
+                  newVid.id,
+                  newVid.title,
+                  newVid.description,
+                  newVid.VideoTags.map(vt => vt.tag),
+                );
+              }
               console.log("updateing video done", job.data.video_id);
             } catch (error) {
               logger.error(
@@ -185,12 +208,12 @@ export const worker = new Worker<MyData>(
     connection: redis,
     prefix: "queue",
     concurrency: 1,
-    // autorun: false,
+    autorun: false,
   },
 );
 
 worker.on("failed", async (job, error) => {
-  console.log(error);
+  console.log('worker.on("failed', error);
 
   if (!job) {
     return;

@@ -14,16 +14,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { isTRPCClientError, trpcClient } from "@/trpc/client";
+import { isTRPCClientError, trpc, trpcClient } from "@/trpc/client";
 import axios, { AxiosError } from "axios";
 import { title } from "process";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  refetchVideos?: () => void
 }
 
-export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
+export function UploadDialog({ open, onOpenChange, refetchVideos }: UploadDialogProps) {
+  const queryClient = useQueryClient();
   const [step, setStep] = React.useState<"upload" | "details">("upload");
   const [error, setError] = React.useState<string>();
   const [videoDetails, setVideoDetails] = React.useState<{
@@ -31,7 +34,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     description: string;
   }>({
     title: "",
-    description: "sxaX",
+    description: "",
   });
   const [thumbnailError, setThumbnailError] = React.useState<string>();
   const abortControllerRef = React.useRef<AbortController | null>(null);
@@ -59,13 +62,13 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
-      try {
-        await trpcClient.studio.video.deleteVideo.mutate({
-          video_id: videoId!,
-        });
-      } catch (error) {
-        isTRPCClientError(error) && console.log(error.data);
-      }
+      // try {
+      //   // await trpcClient.studio.video.deleteVideo.mutate({
+      //   //   video_id: videoId!,
+      //   // });
+      // } catch (error) {
+      //   isTRPCClientError(error) && console.log(error.data);
+      // }
       setError("Upload cancelled");
       setUploading(false);
     }
@@ -174,14 +177,14 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (videoId && progress < 100) {
+    if (!videoId || progress < 100) {
       return;
     }
 
     await trpcClient.studio.video.updateVideo.mutate({
       description: videoDetails.description,
       title: videoDetails.title,
-      video_id: videoId!,
+      video_id: videoId
     })
     // Handle form submission
     onOpenChange(false);
@@ -190,6 +193,10 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     setSelectedFile(null);
     setThumbnailPreview(null);
     setThumbnailError(undefined)
+    setStep("upload");
+    refetchVideos && refetchVideos();
+    // trpc.
+    // queryClient.invalidateQueries(['trpc']);
 
     router.refresh();
   };
@@ -425,7 +432,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={progress < 100}
+                    disabled={progress < 100 || uploading}
                     onClick={handleSubmit}
                   >
                     done

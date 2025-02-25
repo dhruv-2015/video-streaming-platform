@@ -1,10 +1,4 @@
-import React from "react";
-import {
-  ThumbsUp,
-  ThumbsDown,
-  Share2,
-  BookmarkIcon,
-} from "lucide-react";
+import React, { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,20 +7,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Link from "next/link";
+import { fixNumber } from "@/lib/utils";
+import LikeDisslike from "./LikeDisslike";
+import Image from "next/image";
 
 interface VideoInfoProps {
   title: string;
+  videoId: string;
   channelName: string;
-  channelId: string;
+  channelslug: string;
   channelAvatar: string;
-  subscribers: string;
-  likes: string;
+  subscribers: number;
+  likes: number;
 }
 
 export function VideoInfo({
   title,
+  videoId,
   channelName,
-  channelId,
+  channelslug,
   channelAvatar,
   subscribers,
   likes,
@@ -34,7 +33,7 @@ export function VideoInfo({
   return (
     <div className="mb-4">
       <Tooltip>
-        <TooltipTrigger  asChild>
+        <TooltipTrigger asChild>
           <h1 className="text-lg font-bold mb-2 line-clamp-2">{title}</h1>
         </TooltipTrigger>
         <TooltipContent>
@@ -42,40 +41,33 @@ export function VideoInfo({
         </TooltipContent>
       </Tooltip>
 
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-4 ">
+        <div className="flex items-center gap-4 ">
           {/* {channelName} */}
-          <Avatar>
-            <AvatarImage src={channelAvatar} alt={channelName} />
+          <Avatar className="border-2 border-primary">
+            <AvatarImage src={channelAvatar} alt={channelName} asChild >
+              <Image src={channelAvatar} alt={channelName} fill  />
+               </AvatarImage>
             <AvatarFallback>{channelName[0]}</AvatarFallback>
           </Avatar>
           <div>
             <Link
-              href={`/channel/${channelId}`}
+              href={`/channel/${channelslug}`}
               className="font-bold hover:text-primary"
             >
               {channelName}
             </Link>
             <p className="text-sm text-muted-foreground">
-              {subscribers} subscribers
+              {fixNumber(subscribers)} subscribers
             </p>
           </div>
           <Button>Subscribe</Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm">
-            <ThumbsUp className="mr-2 h-4 w-4" /> {likes}
-          </Button>
-          <Button variant="secondary" size="sm">
-            <ThumbsDown className="mr-2 h-4 w-4" />
-          </Button>
-          <Button variant="secondary" size="sm">
-            <Share2 className="mr-2 h-4 w-4" /> Share
-          </Button>
-          <Button variant="secondary" size="sm">
-            <BookmarkIcon className="mr-2 h-4 w-4" /> save
-          </Button>
+          <Suspense fallback={null}>
+            <LikeDisslike likes_count={likes} video_id={videoId} />
+          </Suspense>
         </div>
       </div>
     </div>

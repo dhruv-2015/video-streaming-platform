@@ -7,6 +7,7 @@ export const authConfig = {
     Google,
   ],
   redirectProxyUrl: env.PUBLIC_URL + "/api/auth",
+  trustHost: true,
   pages: {
     signIn: "/login",
     signOut: "/api/auth/signout",

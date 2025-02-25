@@ -19,6 +19,18 @@ const nextConfig = {
         hostname: 'localhost',
         port: '4568',
       },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos'
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com'
+      },
+      {
+        protocol: 'http',
+        hostname: "100.85.36.39"
+      }
     ],
 
   },
