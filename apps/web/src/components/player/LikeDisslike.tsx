@@ -17,6 +17,11 @@ const LikeDisslike = ({
   // isDissLiked: boolean;
   likes_count: number;
 }) => {
+  useEffect(() => {
+    trpcClient.history.addVideoToHistory
+      .query({ video_id })
+      .catch(console.error);
+  }, []);
   const {
     data: state,
     isLoading,
@@ -24,6 +29,9 @@ const LikeDisslike = ({
     error,
   } = trpc.video.getVideoState.useQuery({
     video_id: video_id,
+  }, {
+    retry: 1,
+
   });
   const [isLiked, setIsliked] = useState(state?.isLiked ?? false);
   const [isDissLiked, setDissIsliked] = useState(state?.isDissLiked ?? false);
@@ -46,7 +54,7 @@ const LikeDisslike = ({
       }
     };
   };
-  if (isError) {
+  if (isError && error.data?.code !== "UNAUTHORIZED") {
     return <div>{error?.data?.message ?? error.message}</div>;
   }
   if (isLoading) {
@@ -55,7 +63,7 @@ const LikeDisslike = ({
   return (
     <>
       <Button variant="secondary" size="sm" onClick={handelClick("like")}>
-        {isLiked ? (
+        {isLiked && !isError ? (
           <ThumbsUp className="mr-2 h-4 w-4" fill="white" />
         ) : (
           <ThumbsUp className="mr-2 h-4 w-4" />
@@ -63,7 +71,7 @@ const LikeDisslike = ({
         {fixNumber(like)}
       </Button>
       <Button variant="secondary" size="sm" onClick={handelClick("disslike")}>
-        {isDissLiked ? (
+        {isDissLiked  && !isError ? (
           <ThumbsDown className="mr-2 h-4 w-4" fill="white" />
         ) : (
           <ThumbsDown className="mr-2 h-4 w-4" />
@@ -72,14 +80,16 @@ const LikeDisslike = ({
       <Button variant="secondary" size="sm">
         <Share2 className="mr-2 h-4 w-4" /> Share
       </Button>
-      <PlaylistSelector
-        video_id={video_id}
-        trigger={
-          <Button variant="secondary" size="sm">
-            <BookmarkIcon className="mr-2 h-4 w-4" /> save
-          </Button>
-        }
-      />
+      {!isError && (
+        <PlaylistSelector
+          video_id={video_id}
+          trigger={
+            <Button variant="secondary" size="sm">
+              <BookmarkIcon className="mr-2 h-4 w-4" /> save
+            </Button>
+          }
+        />
+      )}
     </>
   );
 };

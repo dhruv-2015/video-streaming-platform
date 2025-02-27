@@ -75,7 +75,7 @@ export const channelRouter = router({
       }
       const is_creater = channel.user_id == ctx.session?.user.id;
       console.log(is_creater);
-      
+
       const whereCondition: any = {
         channel_id: channel.id,
         is_deleted: false,
@@ -90,7 +90,7 @@ export const channelRouter = router({
         whereCondition.title = {
           contains: input.query,
           mode: "insensitive",
-        }
+        };
       }
       try {
         const videos = await prisma.video.findMany({
@@ -101,9 +101,9 @@ export const channelRouter = router({
             _count: {
               select: {
                 VideoComment: true,
-              }
-            }
-          }
+              },
+            },
+          },
         });
         const total = await prisma.video.count({
           where: whereCondition,
@@ -148,30 +148,46 @@ export const channelRouter = router({
     .meta({
       openapi: {
         method: "GET",
-        path: "/channel/{id}",
+        path: "/channel/{channel_slug}",
         summary: "Get Channel",
         description: "Get Channel",
         protect: false,
         tags: ["Channel"],
       },
     })
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ channel_slug: z.string() }))
     .output(
       z.object({
         id: z.string(),
         name: z.string(),
         slug: z.string(),
         image: z.string(),
-        description: z.string().optional(),
+        description: z.string(),
         subscriber_count: z.number(),
         total_views: z.number(),
+        total_videos: z.number(),
+        join_at: z.date(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const channel = await prisma.channel.findUnique({
         where: {
-          id: input.id,
+          slug: input.channel_slug,
         },
+        include: {
+          _count: {
+            select: {
+              Videos: {
+                where: {
+                  is_deleted: false,
+                  is_banned: false,
+                  is_published: true,
+                  is_ready: true,
+                }
+              },
+            }
+          }
+        }
       });
       if (!channel) {
         throw new TRPCError({
@@ -184,7 +200,7 @@ export const channelRouter = router({
           const alreadyView = await prisma.channelView.findUnique({
             where: {
               channel_id_user_id: {
-                channel_id: input.id,
+                channel_id: channel.id,
                 user_id: ctx.session.user.id,
               },
             },
@@ -194,7 +210,7 @@ export const channelRouter = router({
             await prisma.$transaction([
               prisma.channel.update({
                 where: {
-                  id: input.id,
+                  id: channel.id,
                 },
                 data: {
                   total_views: {
@@ -204,7 +220,7 @@ export const channelRouter = router({
               }),
               prisma.channelView.create({
                 data: {
-                  channel_id: input.id,
+                  channel_id: channel.id,
                   user_id: ctx.session.user.id,
                 },
               }),
@@ -225,10 +241,93 @@ export const channelRouter = router({
         id: channel.id,
         name: channel.name,
         slug: channel.slug,
-        image: `${env.S3_PUBLIC_ENDPOINT}/${channel.image}`,
+        image: channel.image ? `${env.S3_PUBLIC_ENDPOINT}/${channel.image.key}`: `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
         description: channel.description,
         subscriber_count: channel.subscriber_count,
         total_views: channel.total_views,
+        total_videos: channel._count.Videos,
+        join_at: channel.createdAt,
       };
+    }),
+  getPlaylist: publicProcedure
+    .input(
+      z.object({
+        page: z.number().default(1),
+        limit: z.number().default(10),
+        channel_id: z.string(),
+      }),
+    )
+    .output(z.object({
+      total_page: z.number(),
+      total_playlist: z.number(),
+      next_page: z.number().nullable(),
+      previos_page: z.number().nullable(),
+      playlists: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string(),
+          total_videos: z.number(),
+          thumbnail: z.string(),
+          created_at: z.string(),
+        })
+      ),
+    }))
+    .query(async ({ ctx, input }) => {
+      const channel = await prisma.channel.findUnique({
+        where: {
+          id: input.channel_id,
+        }
+      });
+      if (!channel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Channel not found",
+        });
+      }
+      const playlists = await prisma.playlist.findMany({
+        where: {
+          creater_id: channel.user_id,
+          is_private: false,
+        },
+        include: {
+          _count: {
+            select: {
+              PlaylistVideo: true
+            }
+          },
+          PlaylistVideo: {
+            select: {
+              video: {
+                select: {
+                  thumbnail: true,
+                }
+              }
+            },
+            take: 1
+          }
+        }
+      })
+      const total_playlist = await prisma.playlist.count({
+        where: {
+          creater_id: channel.user_id,
+          is_private: false,
+        }
+      })
+      const total_page = Math.ceil(total_playlist / input.limit);
+      return {
+        next_page: input.page < total_page ? input.page + 1 : null,
+        previos_page: input.page > 1 ? input.page - 1 : null,
+        total_page,
+        total_playlist,
+        playlists: playlists.map(playlist => ({
+          id: playlist.id,
+          name: playlist.name,
+          description: playlist.description,
+          total_videos: playlist._count.PlaylistVideo,
+          thumbnail: playlist.PlaylistVideo[0]?.video.thumbnail ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${playlist.PlaylistVideo[0]?.video.thumbnail.key}` : `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
+          created_at: playlist.createdAt.toISOString(),
+        }))
+      }
     }),
 });

@@ -75,7 +75,7 @@ export function AppSidebar() {
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="History" asChild>
-                <Link href="/">
+                <Link href="/history">
                   <History className="mr-2 h-4 w-4" />
                   <span>History</span>
                 </Link>
@@ -98,7 +98,7 @@ export function AppSidebar() {
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Watch later" asChild>
-                <Link href="/">
+                <Link href="/watchlater">
                   <Clock className="mr-2 h-4 w-4" />
                   <span>Watch later</span>
                 </Link>
@@ -107,7 +107,7 @@ export function AppSidebar() {
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Liked Videos" asChild>
-                <Link href="/">
+                <Link href="/likes">
                   <ThumbsUp className="mr-2 h-4 w-4" />
                   <span>Liked Videos</span>
                 </Link>

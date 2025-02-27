@@ -105,7 +105,7 @@ export const userRouter = router({
       z.object({
         id: z.string(),
         name: z.string(),
-        image: z.string().optional(),
+        image: z.string(),
         email: z.string(),
         role: z.enum(["ADMIN", "USER"]),
         channel_id: z.string().optional(),
@@ -127,7 +127,7 @@ export const userRouter = router({
         id: user.id,
         name: user.name,
         // image: !user.image?.startsWith("http") ?  `${env.S3_PUBLIC_ENDPOINT}/${user.image}`: user.image ?? undefined,
-        image: user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.key}` : undefined,
+        image: user.image ? `${env.S3_PUBLIC_ENDPOINT}/${user.image.key}` : `${env.S3_PUBLIC_ENDPOINT}/thumbnail/default.svg`,
         email: user.email,
         role: user.role as "ADMIN" | "USER",
         channel_id: user.channel_id ?? undefined,

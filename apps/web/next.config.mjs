@@ -30,6 +30,10 @@ const nextConfig = {
       {
         protocol: 'http',
         hostname: "100.85.36.39"
+      },
+      {
+        protocol: 'https',
+        hostname: "images.unsplash.com"
       }
     ],
 

@@ -27,6 +27,7 @@ export default async function Home({ params,searchParams }: { params: { video_id
       video_id: params.video_id,
     });
     
+    
     return (
       <main className="min-h-screen bg-background text-foreground">
         <div className="max-w-[1800px] mx-auto p-4">

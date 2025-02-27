@@ -2,6 +2,7 @@ import { exec, execSync, spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import logger from "./logger";
+import { ChildProcess } from "child_process";
 
 interface FFmpegProgress {
   percent: number;
@@ -317,26 +318,6 @@ class FfmpegWrapper {
         reject(error);
         return;
       }
-      resolve();
-
-
-      // Handle process completion
-      // process.on("exit", (code: number | null) => {
-      //   if (code === 0) {
-      //     if (onEnd) onEnd();
-      //     resolve();
-      //   } else {
-      //     const error = new Error(`packager process exited with code ${code}`);
-      //     if (onError) onError(error);
-      //     reject(error);
-      //   }
-      // });
-
-      // // Handle process errors
-      // process.on("error", (error: Error) => {
-      //   if (onError) onError(error);
-      //   reject(error);
-      // });
     });
   }
 }
@@ -473,14 +454,19 @@ class SubtitleFormatChecker {
 
 export class VideoTranscoder {
   private ffmpegWrapper: FfmpegWrapper;
+  private activeProcesses: Set<ChildProcess> = new Set();
+  private jobId?: string;
+
   constructor(
     private GPU: boolean,
     private ffmpeg: string = "ffmpeg",
     private packager: string = "packager",
     private SEGMENT_DURATION = 6,
-    private MAX_SEGMENTS_PER_PLAYLIST = 0 // 0 means include all segments for VOD set somthing for live videos
+    private MAX_SEGMENTS_PER_PLAYLIST = 0,
+    jobId?: string
   ) {
     this.ffmpegWrapper = new FfmpegWrapper(ffmpeg, packager);
+    this.jobId = jobId;
   }
 
   private getFPS(videoStream: Stream): number {
@@ -1671,7 +1657,7 @@ export class VideoTranscoder {
               },
               onEnd: async (skipUpload) => {
                 end.push(i);
-                logger.info("FFmpeg command completed");
+                logger.info("FFmpeg command completed " + i);
                 options?.onFfmpegEnd?.call(this, {
                   part: i,
                 });
@@ -1739,6 +1725,27 @@ export class VideoTranscoder {
       }
       throw new Error("Error while parsing orignal video");
     }
+  }
+
+  private registerProcess(process: ChildProcess) {
+    this.activeProcesses.add(process);
+    process.once('exit', () => {
+      this.activeProcesses.delete(process);
+    });
+  }
+
+  public async cleanup() {
+    logger.info("Cleaning up transcoder processes", { jobId: this.jobId });
+    
+    const killPromises = Array.from(this.activeProcesses).map(process => {
+      return new Promise<void>((resolve) => {
+        process.once('exit', () => resolve());
+        process.kill('SIGKILL');
+      });
+    });
+
+    await Promise.all(killPromises);
+    this.activeProcesses.clear();
   }
 }
 

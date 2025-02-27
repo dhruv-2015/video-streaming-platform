@@ -29,7 +29,7 @@ model User {
   Channel              Channel?
   updatedAt            DateTime               @updatedAt
   createdAt            DateTime               @default(now())
-  VideoView            VideoView[]            @ignore
+  VideoView            VideoView[]            
   VideoLike            VideoLike[]
   VideoDissLike        VideoDissLike[]        @ignore
   ChannelView          ChannelView[]          @ignore
@@ -123,14 +123,14 @@ model Video {
   orignal_file       S3File?
   is_uploaded        Boolean           @default(false)
   VideoFile          VideoFile?
-  VideoView          VideoView[]       @ignore
+  VideoView          VideoView[]       
   VideoLike          VideoLike[]
   VideoDissLike      VideoDissLike[]
   VideoComment       VideoComment[]
   video_tags_id      String[]          @db.ObjectId
   VideoTags          VideoTags[]       @relation(fields: [video_tags_id], references: [id])
-  WatchHistory       WatchHistory[]    @ignore
-  WarchLaterVideo    WarchLaterVideo[] @ignore
+  WatchHistory       WatchHistory[]    
+  WarchLaterVideo    WarchLaterVideo[] 
   PlaylistVideo      PlaylistVideo[]
   VideoTranscoding   VideoTranscoding?
 }

@@ -8,7 +8,7 @@ import { trpcServerClient } from "./trpc/server";
 const { auth, signOut } = NextAuth(authConfig);
 export default auth(async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const privatePages = ["/studio", "/profile", "/playlist"];
+  const privatePages = ["/studio", "/profile", "/playlist", "/history", "/likes"];
   // if (pathname === '/logout') {
   //   await signOut({
   //     redirect: false,
@@ -60,5 +60,5 @@ export default auth(async function middleware(request: NextRequest) {
 
 // Configure which paths the middleware should run on
 export const config = {
-  matcher: ["/api/:path*", "/studio/:path*", "/profile", "/playlist", '/logout'],
+  matcher: ["/api/:path*", "/studio/:path*", "/profile", "/playlist", '/logout',  "/history", "/likes"],
 };

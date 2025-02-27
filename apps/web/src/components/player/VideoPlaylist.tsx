@@ -14,6 +14,7 @@ import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { isTRPCClientError, trpcClient } from "@/trpc/client";
 import { RouterOutputs } from "@workspace/trpc";
 import { convertSecondsToHMS } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // interface VideoPlaylist {
 //   id: number;
@@ -35,6 +36,8 @@ export function VideoPlaylist({ playlist_id, video_id }: VideoPlaylistProps) {
   const [videos, setVideos] = React.useState<VideoPlaylist[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [nextPage, setNextPage] = React.useState<number | null>(1);
+
+  const [isError, setIsError] = React.useState(false);
   if (!playlist_id) {
     return <></>;
   }
@@ -54,6 +57,7 @@ export function VideoPlaylist({ playlist_id, video_id }: VideoPlaylistProps) {
         console.error(error.data?.message || error.message);
         alert(error.data?.message || error.message);
       }
+      setIsError(true);
     }
   }
   // fetchPlaylistVideos(playlist_id, nextPage);
@@ -63,15 +67,11 @@ export function VideoPlaylist({ playlist_id, video_id }: VideoPlaylistProps) {
 
   return (
     <>
-      <div className="mb-5">
+      <div className="mb-5 h-[calc(100vh-200px)]">
         <h3 className="text-lg font-bold mb-4">Playlist</h3>
-        <ScrollArea className={`max-h-[600px] -mx-2 px-2`}>
-          <InfiniteScroll
-            hasMore={nextPage !== null}
-            isLoading={isLoading}
-            next={() => fetchPlaylistVideos(playlist_id, nextPage || 1)}
-            threshold={10}
-          >
+        
+        <ScrollArea className="h-[calc(100%-3rem)]">
+          <div className="p-2">
             {videos.map(video => (
               <Link
                 key={video.id}
@@ -89,15 +89,9 @@ export function VideoPlaylist({ playlist_id, video_id }: VideoPlaylistProps) {
                     fill
                     className="w-full h-full object-cover rounded"
                   />
-                  {/* <div className="absolute bottom-1 right-1 rounded bg-background/80 px-1 text-xs"> */}
                   <div className="absolute bottom-2 right-2 bg-background/80 text-xs px-2 py-1 rounded">
                       {video.id === video_id  ? "Playing" : convertSecondsToHMS(video.duration)}
                     </div>
-                  {/* {video.id === video_id && (
-                    <div className="absolute bottom-2 right-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
-                      Playing  {convertSecondsToHMS(video.duration)}
-                    </div>
-                  )} */}
                 </div>
                 <div className="flex-1">
                   <Tooltip>
@@ -118,19 +112,17 @@ export function VideoPlaylist({ playlist_id, video_id }: VideoPlaylistProps) {
                   >
                     {video.channel.name}
                   </Link>
-                  {/* <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                <div className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" /> {video}
-                </div>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" /> {video.uploadTime}
-                </div>
-              </div> */}
                 </div>
               </Link>
             ))}
-          </InfiniteScroll>
+            {nextPage !== null && isError && (
+              <div className="flex items-center justify-center p-4">
+                <Button onClick={() => fetchPlaylistVideos(playlist_id, nextPage)}>
+                  Load More
+                </Button>
+              </div>
+            )}
+          </div>
         </ScrollArea>
         <div className="space-y-4"></div>
       </div>

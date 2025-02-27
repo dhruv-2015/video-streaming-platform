@@ -24,21 +24,18 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { Button } from "@workspace/ui/components/button";
 import Image from "next/image";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { RouterOutputs } from "@workspace/trpc";
+import { PlaylistSelector } from "../PlaylistSelector/page";
 
 const VideoCart = async ({
   video,
 }: {
-  video: {
-    id: string;
-    title: string;
-    thumbnail: string;
-    channel_thumbnail: string;
-    channel_name: string;
-    channel_slug: string;
-    views: string;
-    timestamp: string;
-  };
+  video: RouterOutputs["video"]["getVideos"]["videos"][0];
 }) => {
   // await trpc.user.getMe.query({})
   // const {data, isLoading, isError, error} = trpc.video.getVideo.useQuery({ video_id: video.id });
@@ -66,36 +63,41 @@ const VideoCart = async ({
           // onClick={() => push(`/channel/${video.channel_slug}`)}
           asChild
         >
-          <Link href={`/channel/${video.channel_slug}`}>
-          <AvatarImage src={video.channel_thumbnail} />
-          <AvatarFallback>
-            <PlaySquare />
-          </AvatarFallback>
+          <Link href={`/channel/${video.channel.slug}`}>
+            <AvatarImage src={video.channel.image} />
+            <AvatarFallback>
+              <PlaySquare />
+            </AvatarFallback>
           </Link>
         </Avatar>
         <div className="p-4 flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0 whitespace-nowrap overflow-hidden">
               <Link href={`/play/${video.id}`}>
-              <Tooltip>
-                <TooltipTrigger  asChild>
-                  {/* <h1 className="text-lg font-bold mb-2 line-clamp-2">{title}</h1> */}
-              <h3 className="font-semibold line-clamp-2">{video.title}</h3>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-[33rem]">{video.title}</p>
-                </TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* <h1 className="text-lg font-bold mb-2 line-clamp-2">{title}</h1> */}
+                    <h3 className="font-semibold line-clamp-2">
+                      {video.title}
+                    </h3>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-[33rem]">{video.title}</p>
+                  </TooltipContent>
+                </Tooltip>
               </Link>
-              <Link href={`/channel/${video.channel_slug}`}>
+              <Link href={`/channel/${video.channel.slug}`}>
                 <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {video.channel_name}
+                  {video.channel.name}
                 </p>
               </Link>
               <div className="flex items-center text-sm text-muted-foreground mt-1">
-                <span>{video.views}</span>
+                <span>{video.view_count}</span>
                 <span className="mx-1">•</span>
-                <span>{video.timestamp}</span>
+                <span>
+                  {video.created_at.toLocaleDateString()} :{" "}
+                  {video.created_at.toLocaleTimeString()}
+                </span>
               </div>
             </div>
             <DropdownMenu>
@@ -105,10 +107,16 @@ const VideoCart = async ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <ListPlus className="mr-2 h-4 w-4" />
-                  Add to Playlist
-                </DropdownMenuItem>
+                <PlaylistSelector
+                  video_id={video.id}
+                  trigger={
+                    <DropdownMenuItem>
+                      <ListPlus className="mr-2 h-4 w-4" />
+                      Add to Playlist
+                    </DropdownMenuItem>
+                  }
+                ></PlaylistSelector>
+
                 <DropdownMenuItem>
                   <Clock className="mr-2 h-4 w-4" />
                   Save to Watch Later

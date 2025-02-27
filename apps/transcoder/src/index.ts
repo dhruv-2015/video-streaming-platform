@@ -18,16 +18,16 @@ async function gracefulShutdown(code?: number) {
 }
 
 // Handle various shutdown signals
-process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT", gracefulShutdown);
-process.on("uncaughtException", err => {
-  console.error("Uncaught Exception:", err);
-  gracefulShutdown();
-});
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-  gracefulShutdown();
-});
+// process.on("SIGTERM", gracefulShutdown);
+// process.on("SIGINT", gracefulShutdown);
+// process.on("uncaughtException", err => {
+//   console.error("Uncaught Exception:", err);
+//   gracefulShutdown();
+// });
+// process.on("unhandledRejection", (reason, promise) => {
+//   console.error("Unhandled Rejection at:", promise, "reason:", reason);
+//   gracefulShutdown();
+// });
 
 
 // videoTranscoder.transcode("video.mp4", "output", {

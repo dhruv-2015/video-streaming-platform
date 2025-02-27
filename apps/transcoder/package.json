@@ -16,7 +16,7 @@
   "description": "",
   "scripts": {
     "build": "tsup",
-    "dev": "nodemon",
+    "dev": "tsx src/index.ts",
     "start": "node dist/index.js"
   },
   "devDependencies": {

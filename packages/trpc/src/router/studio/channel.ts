@@ -5,9 +5,11 @@ import {
   router,
 } from "../../trpc";
 import { TRPCError } from "@trpc/server";
+import { customS3Uploader } from "@workspace/aws";
 import { prisma } from "@workspace/database";
 import { env } from "@workspace/env";
 import { z } from "zod";
+import path from "path";
 // import { tagsRouter } from "./tags";
 
 export const channelRouter = router({
@@ -22,9 +24,11 @@ export const channelRouter = router({
       },
     })
     .input(z.object({ slug: z.string() }))
-    .output(z.object({
-      available: z.boolean(),
-    }))
+    .output(
+      z.object({
+        available: z.boolean(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       try {
         const channel = await prisma.channel.findUnique({
@@ -33,9 +37,9 @@ export const channelRouter = router({
           },
         });
         console.log(channel, "channel", channel === null, channel !== null);
-        
+
         return {
-          available: channel === null
+          available: channel === null,
         };
       } catch (error) {
         throw new TRPCError({
@@ -76,7 +80,7 @@ export const channelRouter = router({
           message: "Channel already exists",
         });
       }
-      const channel = await prisma.$transaction(async (prisma) => {
+      const channel = await prisma.$transaction(async prisma => {
         const channel = await prisma.channel.create({
           data: {
             name: input.name,
@@ -95,10 +99,10 @@ export const channelRouter = router({
           },
           where: {
             id: ctx.session.user.id,
-          }
-        })
+          },
+        });
         return channel;
-      })
+      });
       return {
         id: channel.id,
         name: channel.name,
@@ -200,32 +204,33 @@ export const channelRouter = router({
       };
     }),
 
-    getMychannel: protectedApiChannelProcedure.
-    input(z.void())
-    .output(z.object({
-      id: z.string(),
-      name: z.string(),
-      slug: z.string(),
-      description: z.string().optional(),
-      // subscriber_count: z.number(),
-      // total_views: z.number(),
-      image: z.string().optional(),
-      stats: z.object({
-        totalViews: z.number(),
-        totalSubscribers: z.number(),
-        totalVideos: z.number(),
-      })
-    }))
+  getMychannel: protectedApiChannelProcedure
+    .input(z.void())
+    .output(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        slug: z.string(),
+        description: z.string().optional(),
+        // subscriber_count: z.number(),
+        // total_views: z.number(),
+        image: z.string().optional(),
+        stats: z.object({
+          totalViews: z.number(),
+          totalSubscribers: z.number(),
+          totalVideos: z.number(),
+        }),
+      }),
+    )
     .query(async ({ ctx }) => {
-
       if (!ctx.channel) {
         await prisma.user.update({
           data: {
-            channel_id: null
+            channel_id: null,
           },
           where: {
-            id: ctx.session.user.id
-          }
+            id: ctx.session.user.id,
+          },
         });
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -234,9 +239,9 @@ export const channelRouter = router({
       }
       const totalVideos = await prisma.video.count({
         where: {
-          channel_id: ctx.channel.id
-        }
-      })
+          channel_id: ctx.channel.id,
+        },
+      });
       return {
         id: ctx.channel.id,
         name: ctx.channel.name,
@@ -244,12 +249,118 @@ export const channelRouter = router({
         description: ctx.channel.description,
         // subscriber_count: ctx.channel.subscriber_count,
         // total_views: ctx.channel.total_views,
-        image:ctx.channel.image ? `${env.S3_PUBLIC_ENDPOINT}/${ctx.channel.image.bucket}/${ctx.channel.image.key}` : undefined,
+        image: ctx.channel.image
+          ? `${env.S3_PUBLIC_ENDPOINT}/${ctx.channel.image.key}`
+          : `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
         stats: {
           totalSubscribers: ctx.channel.subscriber_count,
           totalViews: ctx.channel.total_views,
-          totalVideos: totalVideos
-        }
+          totalVideos: totalVideos,
+        },
       };
     }),
+  generatePresignedUrlForChannelImage: protectedApiChannelProcedure
+    .input(
+      z.object({
+        name: z.string(),
+        size: z.number(),
+      }),
+    )
+    .output(z.object({ url: z.string(), file_id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.channel) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Channel not found",
+        });
+      }
+      try {
+        const presignedUrl = await customS3Uploader.generatePresignedUrl({
+          bucket: env.S3_FILES_BUCKET,
+          for: "temp",
+          maxSizeBytes: input.size,
+          fileName: input.name,
+        });
+        const file = await prisma.tempFileUpload.create({
+          data: {
+            bucket: presignedUrl.s3Data.bucket,
+            expires: presignedUrl.s3Data.expire,
+            key: presignedUrl.s3Data.key,
+          },
+        });
+        return {
+          url: presignedUrl.url,
+          file_id: file.id,
+        };
+      } catch (error) {
+        logger.error("studio.channel.generatePresignedUrlForChannelImage", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to generate presigned url",
+        });
+      }
+    }),
+  uploadChannelImage: protectedApiChannelProcedure
+    .input(z.object({ file_id: z.string() }))
+    .output(z.object({
+      image: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.channel) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Channel not found",
+        });
+      }
+      try {
+        const file = await prisma.tempFileUpload.findUnique({
+          where: {
+            id: input.file_id,
+          }
+        })
+        if (!file) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "File not found",
+          })
+        }
+        const fileExists = await customS3Uploader.checkFileExists({
+          bucket: file.bucket,
+          key: file.key,
+        })
+        if (!fileExists) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "File not found",
+          })
+        }
+        await customS3Uploader.copyObject({
+          bucket: file.bucket,
+          key: file.key,
+        }, {
+          bucket: env.S3_FILES_BUCKET,
+          key: `channel/thumbnail/${ctx.channel?.id}${path.extname(file.key)}`,
+        })
+        await prisma.channel.update({
+          data: {
+            image: {
+              bucket: env.S3_FILES_BUCKET,
+              key: `channel/thumbnail/${ctx.channel?.id}${path.extname(file.key)}`,
+            }
+          },
+          where: {
+            id: ctx.channel.id
+          }
+        });
+        return {
+          image: `${env.S3_PUBLIC_ENDPOINT}/channel/thumbnail/${ctx.channel.id}${path.extname(file.key)}`
+        };
+      } catch (error) {
+        logger.error("studio.channel.uploadChannelImage", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to upload channel image",
+        });
+      }
+    })
 });

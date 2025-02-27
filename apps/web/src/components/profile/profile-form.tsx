@@ -21,53 +21,77 @@ export function ProfileForm() {
   const [name, setName] = useState(user.name ?? "");
   const [email, setEmail] = useState(user.email ?? "");
   const [image, setImage] = useState(user.image ?? "");
+  const [isUpdatingImage, setIsUpdatingImage] = useState(false);
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
   const { toast } = useToast();
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Here you would typically upload the image to your storage
-      // For now, we'll just create a local URL
-      const imageUrl = URL.createObjectURL(file);
+      setIsUpdatingImage(true);
       try {
         const {url, fileId} = await trpcClient.user.getPreSignedUrlForImage.mutate({
           image_name: file.name,
           image_size: file.size,
         })
+        
         await axios.put(url, file, {
           headers: {
             'Content-Type': file.type,
           },
         })
+        
         await trpcClient.user.updateImage.mutate({
           fileId: fileId,
         })
+        
+        const imageUrl = URL.createObjectURL(file);
+        setImage(imageUrl);
+        
+        toast({
+          title: "Success",
+          description: "Your profile image has been updated successfully.",
+        });
       } catch (error) {
-        isTRPCClientError(error) && toast({
-          title: "Error updating image",
-          description: error.message,
-        });
-
-        axios.isAxiosError(error) && toast({
-          title: "Error updating image",
-          description: `${error.response?.statusText} - ${error.response?.data.message}`,
-        });
+        if (isTRPCClientError(error)) {
+          toast({
+            title: "Error updating image",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else if (axios.isAxiosError(error)) {
+          toast({
+            title: "Error updating image",
+            description: `${error.response?.statusText} - ${error.response?.data.message}`,
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setIsUpdatingImage(false);
       }
-      setImage(imageUrl);
-      toast({
-        title: "Image updated",
-        description: "Your profile image has been updated successfully.",
-      });
     }
   };
 
-  const handleNameSubmit = (e: React.FormEvent) => {
+  const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle name update logic here
-    toast({
-      title: "Name updated",
-      description: "Your name has been updated successfully.",
-    });
+    setIsUpdatingName(true);
+    try {
+      await trpcClient.user.updateName.mutate({ name });
+      toast({
+        title: "Success",
+        description: "Your name has been updated successfully.",
+      });
+    } catch (error) {
+      if (isTRPCClientError(error)) {
+        toast({
+          title: "Error updating name",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsUpdatingName(false);
+    }
   };
 
   return (
@@ -94,12 +118,15 @@ export function ProfileForm() {
               className="hidden"
               id="profile-image"
               onChange={handleImageChange}
+              disabled={isUpdatingImage}
             />
             <Label
               htmlFor="profile-image"
-              className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+              className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 ${
+                isUpdatingImage ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              Change Image
+              {isUpdatingImage ? "Uploading..." : "Change Image"}
             </Label>
           </div>
         </div>
@@ -114,8 +141,11 @@ export function ProfileForm() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Enter your name"
+                disabled={isUpdatingName}
               />
-              <Button type="submit">Update Name</Button>
+              <Button type="submit" disabled={isUpdatingName} loading={isUpdatingName}>
+                Update Name
+              </Button>
             </div>
           </div>
         </form>

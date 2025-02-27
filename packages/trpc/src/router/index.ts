@@ -10,6 +10,9 @@ import { playlistRouter } from "./playlist";
 import { env } from "@workspace/env";
 import logger from "../logger";
 import { recomandationSystem } from "@workspace/services";
+import { likeRouter } from "./likes";
+import { historyRouter } from "./history";
+import { watchLaterRouter } from "./watchLater";
 // import { tagsRouter } from "./tags";
 
 export const trpcRouter = router({
@@ -17,6 +20,9 @@ export const trpcRouter = router({
   channel: channelRouter,
   studio: studioRouter,
   video: videoRouter,
+  like: likeRouter,
+  history: historyRouter,
+  watchLater: watchLaterRouter,
   playlist: playlistRouter,
   removeExpiredFilesFromTempUpload: publicProcedure
     .meta({

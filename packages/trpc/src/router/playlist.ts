@@ -109,7 +109,7 @@ export const playlistRouter = router({
           _count: {
             select: {
               PlaylistVideo: true,
-            }
+            },
           },
           PlaylistVideo: {
             take: 1,
@@ -117,42 +117,44 @@ export const playlistRouter = router({
               video: {
                 select: {
                   thumbnail: true,
-                }
-              }
-            }
+                },
+              },
+            },
           },
           id: true,
           name: true,
           createdAt: true,
           is_private: true,
         },
-
       });
 
       return playlists.map(playlist => {
-        const key = playlist.PlaylistVideo[0]?.video.thumbnail?.key
+        const key = playlist.PlaylistVideo[0]?.video.thumbnail?.key;
 
         return {
           id: playlist.id,
           name: playlist.name,
           created_at: playlist.createdAt,
           type: playlist.is_private ? "private" : "public",
-          
+
           video_count: playlist._count.PlaylistVideo,
-          thumbnail: key ? env.S3_PUBLIC_VIDEO_ENDPOINT + "/" + key : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
+          thumbnail: key
+            ? env.S3_PUBLIC_VIDEO_ENDPOINT + "/" + key
+            : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
         };
       });
     }),
   getPlaylist: publicProcedure
-  .meta({
-    openapi: {
-      method: 'GET',
-      path: '/playlist/{id}',
-      summary: 'Get playlist by id',
-      description: "Get playlist by id. for private playlist you need to be the owner of the playlist and logged in",
-      tags: ['Playlist']
-    }
-  })
+    .meta({
+      openapi: {
+        method: "GET",
+        path: "/playlist/{id}",
+        summary: "Get playlist by id",
+        description:
+          "Get playlist by id. for private playlist you need to be the owner of the playlist and logged in",
+        tags: ["Playlist"],
+      },
+    })
     .input(
       z.object({
         id: z.string(),
@@ -179,7 +181,7 @@ export const playlistRouter = router({
           _count: {
             select: {
               PlaylistVideo: true,
-            }
+            },
           },
           PlaylistVideo: {
             take: 1,
@@ -187,11 +189,11 @@ export const playlistRouter = router({
               video: {
                 select: {
                   thumbnail: true,
-                }
-              }
-            }
+                },
+              },
+            },
           },
-        }
+        },
       });
       if (!playlist) {
         throw new TRPCError({
@@ -201,7 +203,6 @@ export const playlistRouter = router({
       }
       if (playlist.is_private) {
         if (!ctx.session?.user) {
-
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Playlist not found",
@@ -212,17 +213,14 @@ export const playlistRouter = router({
             id: ctx.session?.user.id,
           },
         });
-        if (
-          (!(playlist.creater_id === user?.id || user?.role === "ADMIN"))
-        ) {
+        if (!(playlist.creater_id === user?.id || user?.role === "ADMIN")) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Playlist not found",
           });
         }
-        
       }
-      const imageKey = playlist.PlaylistVideo[0]?.video.thumbnail?.key
+      const imageKey = playlist.PlaylistVideo[0]?.video.thumbnail?.key;
       return {
         id: playlist.id,
         name: playlist.name,
@@ -235,7 +233,6 @@ export const playlistRouter = router({
         created_at: playlist.createdAt,
         type: playlist.is_private ? "private" : "public",
         video_count: playlist._count.PlaylistVideo,
-        
       };
     }),
 
@@ -285,14 +282,14 @@ export const playlistRouter = router({
     }),
   // todo getVideoPlaylist
   getPlaylistVideo: publicProcedure
-    // .meta({
-    //   openapi: {
-    //     method: "GET",
-    //     path: "/playlist/{id}/video",
-    //     summary: "Get all videos of a playlist",
-    //     tags: ["Playlist"],
-    //   }
-    // })
+    .meta({
+      openapi: {
+        method: "GET",
+        path: "/playlist/{playlist_id}/video",
+        summary: "Get all videos of a playlist",
+        tags: ["Playlist"],
+      },
+    })
     .input(
       z.object({
         playlist_id: z.string(),
@@ -300,31 +297,33 @@ export const playlistRouter = router({
         limit: z.number().default(10),
       }),
     )
-    .output(z.object(
-      {
+    .output(
+      z.object({
         total_videos: z.number(),
         total_pages: z.number(),
         next_page: z.number().nullable(),
         previous_page: z.number().nullable(),
-        video: z.array(z.object({
-          id: z.string(),
-          title: z.string(),
-          description: z.string(),
-          thumbnail: z.string(),
-          view_count: z.number(),
-          duration: z.number(),
-          channel: z.object({
-            name: z.string(),
-            image: z.string(),
+        video: z.array(
+          z.object({
             id: z.string(),
-            slug: z.string(),
+            title: z.string(),
+            description: z.string(),
+            thumbnail: z.string(),
+            view_count: z.number(),
+            duration: z.number(),
+            channel: z.object({
+              name: z.string(),
+              image: z.string(),
+              id: z.string(),
+              slug: z.string(),
+            }),
+            is_ready: z.boolean(),
+            is_published: z.boolean(),
+            created_at: z.date(),
           }),
-          is_ready: z.boolean(),
-          is_published: z.boolean(),
-          created_at: z.date(),
-        }))
-      }
-    ))
+        ),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       try {
         const videos = await prisma.playlistVideo.findMany({
@@ -335,7 +334,7 @@ export const playlistRouter = router({
               is_ready: true,
               is_deleted: false,
               is_banned: false,
-            }
+            },
           },
           include: {
             video: {
@@ -367,7 +366,7 @@ export const playlistRouter = router({
           skip: (input.page - 1) * input.limit,
           take: input.limit,
           orderBy: {
-            index: "asc",
+            index: "desc",
           },
         });
         const total_videos = await prisma.playlistVideo.count({
@@ -378,9 +377,9 @@ export const playlistRouter = router({
               is_ready: true,
               is_deleted: false,
               is_banned: false,
-            }
-          }
-        })
+            },
+          },
+        });
 
         const total_pages = Math.ceil(total_videos / input.limit);
 
@@ -392,21 +391,25 @@ export const playlistRouter = router({
           video: videos.map(v => ({
             channel: {
               id: v.video.channel.id,
-              image: v.video.channel.image ? env.S3_PUBLIC_VIDEO_ENDPOINT + "/" + v.video.channel.image.key : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
+              image: v.video.channel.image
+                ? env.S3_PUBLIC_VIDEO_ENDPOINT + "/" + v.video.channel.image.key
+                : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
               name: v.video.channel.name,
-              slug: v.video.channel.slug
+              slug: v.video.channel.slug,
             },
             description: v.video.description,
             duration: v.video.VideoFile?.duration ?? 0,
             id: v.video.id,
             is_published: v.video.is_published,
             is_ready: v.video.is_ready,
-            thumbnail: v.video.thumbnail ? env.S3_PUBLIC_VIDEO_ENDPOINT + "/" + v.video.thumbnail.key : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
+            thumbnail: v.video.thumbnail
+              ? env.S3_PUBLIC_VIDEO_ENDPOINT + "/" + v.video.thumbnail.key
+              : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
             title: v.video.title,
             view_count: Number(v.video.view_count),
             created_at: v.video.createdAt,
           })),
-        }
+        };
       } catch (error) {
         logger.error("playlist.getPlaylistVideo", error);
         throw new TRPCError({
@@ -431,6 +434,8 @@ export const playlistRouter = router({
       z.object({
         id: z.string(),
         name: z.string(),
+        description: z.string().optional(),
+        visibility: z.enum(["private", "public"]).optional(),
       }),
     )
     .output(z.void())
@@ -439,6 +444,13 @@ export const playlistRouter = router({
         await prisma.playlist.update({
           data: {
             name: input.name,
+            description: input.description ?? "",
+            is_private:
+              input.visibility === undefined
+                ? undefined
+                : input.visibility === "private"
+                  ? true
+                  : false,
           },
           where: {
             id: input.id,
@@ -457,6 +469,12 @@ export const playlistRouter = router({
 
   // todo changeVideoIndex
   changeVideoIndex: protectedApiProcedure
+    .meta({
+      openapi: {
+        method: "PATCH",
+        path: "/playlist/{playlist_id}/video/{video_id}/index",
+      },
+    })
     .input(
       z.object({
         playlist_id: z.string(),
@@ -464,6 +482,7 @@ export const playlistRouter = router({
         index: z.number(),
       }),
     )
+    .output(z.void())
     .mutation(async ({ ctx, input }) => {
       // todo
       try {

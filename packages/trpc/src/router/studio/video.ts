@@ -509,7 +509,7 @@ export const videoRouter = router({
           message: "something went wrong while getting video",
         });
       }
-      if (input.file_size > 5 * 1024 * 1024 * 1024) {
+      if (input.file_size > 10 * 1024 * 1024 * 1024) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Video file size should be less than 10GB",
@@ -610,6 +610,17 @@ export const videoRouter = router({
           console.log("verifyVideoUpload debug");
           if (res) {
             try {
+              await customS3Uploader.copyObject(
+                {
+                  bucket: videoFile.bucket,
+                  key: videoFile.key,
+                },
+                {
+                  bucket: env.S3_VIDEO_BUCKET,
+                  key: `video/${video.id}${path.extname(videoFile.key)}`,
+                },
+              );
+              await customS3Uploader.deleteFile(videoFile.bucket, videoFile.key);
               await prisma.video.update({
                 where: {
                   id: input.video_id,
@@ -622,16 +633,6 @@ export const videoRouter = router({
                   is_uploaded: true,
                 },
               });
-              await customS3Uploader.copyObject(
-                {
-                  bucket: videoFile.bucket,
-                  key: videoFile.key,
-                },
-                {
-                  bucket: env.S3_VIDEO_BUCKET,
-                  key: `video/${video.id}${path.extname(videoFile.key)}`,
-                },
-              );
 
               await transcodeVideo(input.video_id, {
                 bucket: env.S3_VIDEO_BUCKET,

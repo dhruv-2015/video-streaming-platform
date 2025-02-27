@@ -157,7 +157,7 @@ export const videoRouter = router({
             subscriber_count: video.channel.subscriber_count,
             slug: video.channel.slug,
             image: video.channel.image
-              ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.channel.image.key}`
+              ? `${env.S3_PUBLIC_ENDPOINT}/${video.channel.image.key}`
               : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
           },
           tags: video.VideoTags.map(tag => tag.tag),
@@ -298,7 +298,7 @@ export const videoRouter = router({
           channel: {
             id: video.channel.id,
             image: video.channel.image
-              ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.channel.image.key}`
+              ? `${env.S3_PUBLIC_ENDPOINT}/${video.channel.image.key}`
               : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
             name: video.channel.name,
             slug: video.channel.slug,
@@ -1078,7 +1078,7 @@ export const videoRouter = router({
             title: z.string(),
             thumbnail: z.string(),
             view_count: z.number(),
-            published_at: z.date(),
+            created_at: z.date(),
             channel: z.object({
               id: z.string(),
               name: z.string(),
@@ -1131,7 +1131,7 @@ export const videoRouter = router({
           title: true,
           thumbnail: true,
           view_count: true,
-          published_at: true,
+          createdAt: true,
           channel: {
             select: {
               id: true,
@@ -1144,7 +1144,7 @@ export const videoRouter = router({
         },
       });
 
-      const total_videos = await prisma.video.count({ where: {} });
+      const total_videos = await prisma.video.count({ where });
 
       const total_pages = Math.ceil(total_videos / input.limit);
 
@@ -1160,12 +1160,13 @@ export const videoRouter = router({
             id: video.channel.id,
             name: video.channel.name,
             image: video.channel.image
-              ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.channel.image.key}`
+              ? `${env.S3_PUBLIC_ENDPOINT}/${video.channel.image.key}`
               : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
             subscriber_count: Number(video.channel.subscriber_count),
             slug: video.channel.slug,
           },
-          published_at: video.published_at!,
+          // published_at: video.published_at!,
+          created_at: video.createdAt,
           thumbnail: video.thumbnail
             ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${video.thumbnail.key}`
             : env.S3_PUBLIC_VIDEO_ENDPOINT + "/thumbnail/default.svg",
@@ -1173,5 +1174,6 @@ export const videoRouter = router({
         })),
       };
     }),
+
   // tags: tagsRouter
 });
