@@ -1,32 +1,6 @@
 import "@workspace/ui/globals.css";
 import { type Metadata } from "next";
 import { Roboto } from "next/font/google";
-
-import { Providers } from "../components/providerWrapper";
-import Header from "@/components/Header/Header";
-import { AppSidebar } from "@/components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@workspace/ui/components/sidebar";
-import { Toaster } from "@/components/ui/toaster"
-import { auth } from "@/auth";
-import { isTRPCClientError, trpcServerClient } from "@/trpc/server";
-import UserFetcher from "@/components/userFetcher";
-import { RouterOutputs } from "@workspace/trpc";
-import { redirect } from "next/navigation";
-
-
-// const fontSans = Geist({
-//   subsets: ["latin"],
-//   variable: "--font-sans",
-// });
-
-// const fontMono = Geist_Mono({
-//   subsets: ["latin"],
-//   variable: "--font-mono",
-// });
-
 const fontRoboto = Roboto({
   subsets: ["latin", "latin-ext"],
   weight: ["100", "300", "400", "500", "700", "900"],
@@ -41,45 +15,9 @@ export const metadata: Metadata = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const seccion = await auth();
-  let user: RouterOutputs["user"]["getMe"] | null = null;
-  if (seccion !== null) {
-    try {
-      user = await trpcServerClient.user.getMe.query(undefined);
-    } catch (error) {
-      if (isTRPCClientError(error)) {
-        if (error.data?.code === "UNAUTHORIZED") {
-          // return redirect("/logout")
-          // return <Providers>
-          //   <UserFetcher logout={true} user={user!} />
-          //   </Providers>
-        } else {
-          console.log(error, "trpcServerClient.user.getMe")
-        }
-        
-      }
-    }
-  }
   return (
     <html lang="en" className={fontRoboto.className} suppressHydrationWarning>
-      <body>
-        <Providers>
-          <div className="flex flex-col min-h-screen">
-            <SidebarProvider>
-              {seccion && user && <UserFetcher user={user} />}
-              <AppSidebar />
-              <div className="flex flex-1">
-                {/* <Sidebar /> */}
-                <SidebarInset>
-                  <Header />
-                  <main className="">{children}</main>
-                  <Toaster />
-                </SidebarInset>
-              </div>
-            </SidebarProvider>
-          </div>
-        </Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

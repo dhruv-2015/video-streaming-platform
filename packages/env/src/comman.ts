@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const server = {
+  LOG: z.string().default("false").transform(v => v === "true"),
   PUBLIC_URL: z
     .string({
       message: "PUBLIC_URL must be a valid URL",

@@ -11,11 +11,11 @@ export default function Header() {
   const { isMobile, openMobile, setOpenMobile } = useSidebar();
   return (
     <header className="flex items-center justify-between p-4 border-b w-full">
-      <div className="md:hidden">
         {isMobile && (<Button onClick={() => setOpenMobile(!openMobile)} variant="ghost">
         <Menu className="h-5 w-5" />
           {/* <Bell className="h-5 w-5" /> */}
         </Button>)}
+      <div className="md:hidden">
         
       </div>
       <div className="flex-1 max-w-xl mx-4">

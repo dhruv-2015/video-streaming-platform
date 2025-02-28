@@ -13,6 +13,7 @@ import { recomandationSystem } from "@workspace/services";
 import { likeRouter } from "./likes";
 import { historyRouter } from "./history";
 import { watchLaterRouter } from "./watchLater";
+import { commentsRouter } from "./comment";
 // import { tagsRouter } from "./tags";
 
 export const trpcRouter = router({
@@ -23,6 +24,8 @@ export const trpcRouter = router({
   like: likeRouter,
   history: historyRouter,
   watchLater: watchLaterRouter,
+
+  comment: commentsRouter,
   playlist: playlistRouter,
   removeExpiredFilesFromTempUpload: publicProcedure
     .meta({

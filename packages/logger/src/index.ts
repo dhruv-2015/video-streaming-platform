@@ -51,7 +51,7 @@ export const logger = createLogger({
 });
 
 
-if (env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production" || env.LOG) {
     logger.add(
         new transports.Console(),
     );

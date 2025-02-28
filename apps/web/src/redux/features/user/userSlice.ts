@@ -30,6 +30,7 @@ export const userSlice = createSlice({
       state.email = action.payload.email;
       state.image = action.payload.image;
       state.channel_id = action.payload.channel_id;
+      state.role = action.payload.role;
     },
     setChannelId: (state, action: PayloadAction<string>) => {
       state.channel_id = action.payload;

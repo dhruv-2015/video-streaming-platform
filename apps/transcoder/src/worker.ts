@@ -109,9 +109,9 @@ export const worker = new Worker<MyData>(
 
       // Initialize transcoder
       const transcoder = new VideoTranscoder(
-        true,
+        process.env.GPU === "true",
         "ffmpeg",
-        "D:\\bin\\packager.exe",
+        "packager",
         6,
         0,
         job.id
@@ -321,7 +321,7 @@ export const worker = new Worker<MyData>(
     connection: redis,
     prefix: "queue",
     concurrency: 1,
-    autorun: false,
+    autorun: true,
     maxStalledCount: 5,
     skipStalledCheck: true,
     lockDuration: 1000 * 60 * 60 * 3, // 2 hours

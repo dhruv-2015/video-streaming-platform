@@ -63,13 +63,13 @@ export default async function Home({ params,searchParams }: { params: { video_id
                 views={video.view_count}
                 uploadDate={video.upload_at}
               />
-              <CommentSection />
+              <CommentSection video_id={video.id} channelId={video.channel.id} />
             </div>
 
             {/* Recommendations */}
             <div className="lg:col-span-1">
-              <VideoPlaylist video_id={params.video_id} playlist_id={searchParams && searchParams['playlist']?.toString()} />
-              <VideoRecommendations video_id={params.video_id} />
+              <VideoPlaylist video_id={video.id} playlist_id={searchParams && searchParams['playlist']?.toString()} />
+              <VideoRecommendations video_id={video.id} />
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { worker } from "./worker";
 
 async function main() {
     rmdirSync("tmp", { recursive: true });
-    await worker.run()
+    // await worker.run()
 }
 
 main().catch(err => {

@@ -158,3 +158,79 @@ COPY --from=webbuilder /app/apps/web/.next/standalone ./
 COPY --from=webbuilder /app/apps/web/.next/static ./apps/web/.next/static
 ENV AUTH_TRUST_HOST=true
 CMD ["node", "apps/web/server.js"]
+
+FROM base AS transcoderprune
+WORKDIR /app
+COPY . .
+RUN pnpm turbo prune --scope=@workspace/transcoder --docker
+
+FROM base AS transcoderbuilder
+WORKDIR /app
+COPY --from=transcoderprune /app/out/json/ .
+RUN pnpm install --frozen-lockfile
+COPY --from=transcoderprune /app/out/full/ .
+RUN pnpm build
+RUN pnpm --filter @workspace/transcoder deploy --prod --frozen-lockfile /out
+
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    wget \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install FFmpeg based on architecture
+COPY ./apps/transcoder/download.sh download.sh
+RUN bash download.sh
+
+
+FROM base AS transcoderrunner
+WORKDIR /app
+
+
+
+# COPY ./apps/transcoder/download.sh download.sh
+# RUN bash download.sh
+
+# # Install FFmpeg based on architecture
+# RUN if [ "$(uname -m)" = "aarch64" ]; then \
+#         wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz \
+#         && tar xf ffmpeg-release-arm64-static.tar.xz \
+#         && mv ffmpeg-*-arm64-static/ffmpeg /usr/local/bin/ \
+#         && mv ffmpeg-*-arm64-static/ffprobe /usr/local/bin/ \
+#         && rm -rf ffmpeg-*-arm64-static*; \
+#     else \
+#         wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
+#         && tar xf ffmpeg-release-amd64-static.tar.xz \
+#         && mv ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ \
+#         && mv ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ \
+#         && rm -rf ffmpeg-*-amd64-static*; \
+#     fi \
+#     && chmod +x /usr/local/bin/ffmpeg \
+#     && chmod +x /usr/local/bin/ffprobe
+
+# # Install Shaka Packager based on architecture
+# RUN if [ "$(uname -m)" = "aarch64" ]; then \
+#         wget https://github.com/shaka-project/shaka-packager/releases/download/v2.6.1/packager-linux-arm64 \
+#         && mv packager-linux-arm64 /usr/local/bin/packager; \
+#     else \
+#         wget https://github.com/shaka-project/shaka-packager/releases/download/v2.6.1/packager-linux-x64 \
+#         && mv packager-linux-x64 /usr/local/bin/packager; \
+#     fi \
+#     && chmod +x /usr/local/bin/packager
+
+# Copy application files
+COPY --from=transcoderbuilder /out/dist .
+COPY --from=transcoderbuilder /out/node_modules ./node_modules
+COPY --from=transcoderbuilder /out/package.json .
+COPY --from=transcoderbuilder /app/packages/database/generated ./packages/database/generated
+COPY --from=transcoderbuilder /app/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=transcoderbuilder /app/ffprobe /usr/local/bin/ffprobe
+COPY --from=transcoderbuilder /app/packager /usr/local/bin/packager
+RUN chmod +x /usr/local/bin/ffmpeg
+RUN chmod +x /usr/local/bin/ffprobe
+RUN chmod +x /usr/local/bin/packager
+
+
+
+ENV AUTH_TRUST_HOST=true
+CMD [ "node", "index.js" ]

@@ -29,17 +29,18 @@ model User {
   Channel              Channel?
   updatedAt            DateTime               @updatedAt
   createdAt            DateTime               @default(now())
-  VideoView            VideoView[]            
+  VideoView            VideoView[]
   VideoLike            VideoLike[]
   VideoDissLike        VideoDissLike[]        @ignore
   ChannelView          ChannelView[]          @ignore
-  VideoComment         VideoComment[]         @ignore
-  VideoCommentLike     VideoCommentLike[]     @ignore
-  VideoCommentDissLike VideoCommentDissLike[] @ignore
+  VideoComment         VideoComment[]
+  VideoCommentLike     VideoCommentLike[]
+  VideoCommentDissLike VideoCommentDissLike[]
   WatchHistory         WatchHistory[]
   Playlist             Playlist[]
   WarchLater           WarchLaterVideo[]
   ChannelSubscription  ChannelSubscription[]
+  VideoCommentReply    VideoCommentReply[]
 }
 
 model deletedChannel {
@@ -99,40 +100,42 @@ enum VideoType {
 }
 
 model Video {
-  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
-  channel_id         String            @db.ObjectId
-  channel            Channel           @relation(fields: [channel_id], references: [id])
-  is_ready           Boolean           @default(false)
-  is_deleted         Boolean           @default(false)
-  delete_reason      String?
-  is_banned          Boolean           @default(false)
-  banned_reason      String?
-  error_message      String?
-  title              String
-  description        String            @default("")
-  thumbnail          S3File?
-  avalable_thumbnail S3File[]
-  view_count         BigInt            @default(0)
-  like_count         BigInt            @default(0)
-  dislike_count      BigInt            @default(0)
-  video_type         VideoType         @default(PUBLIC)
-  is_published       Boolean           @default(false)
-  published_at       DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  orignal_file       S3File?
-  is_uploaded        Boolean           @default(false)
-  VideoFile          VideoFile?
-  VideoView          VideoView[]       
-  VideoLike          VideoLike[]
-  VideoDissLike      VideoDissLike[]
-  VideoComment       VideoComment[]
-  video_tags_id      String[]          @db.ObjectId
-  VideoTags          VideoTags[]       @relation(fields: [video_tags_id], references: [id])
-  WatchHistory       WatchHistory[]    
-  WarchLaterVideo    WarchLaterVideo[] 
-  PlaylistVideo      PlaylistVideo[]
-  VideoTranscoding   VideoTranscoding?
+  id                   String                 @id @default(auto()) @map("_id") @db.ObjectId
+  channel_id           String                 @db.ObjectId
+  channel              Channel                @relation(fields: [channel_id], references: [id])
+  is_ready             Boolean                @default(false)
+  is_deleted           Boolean                @default(false)
+  delete_reason        String?
+  is_banned            Boolean                @default(false)
+  banned_reason        String?
+  error_message        String?
+  title                String
+  description          String                 @default("")
+  thumbnail            S3File?
+  avalable_thumbnail   S3File[]
+  view_count           BigInt                 @default(0)
+  like_count           BigInt                 @default(0)
+  dislike_count        BigInt                 @default(0)
+  video_type           VideoType              @default(PUBLIC)
+  is_published         Boolean                @default(false)
+  published_at         DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  orignal_file         S3File?
+  is_uploaded          Boolean                @default(false)
+  VideoFile            VideoFile?
+  VideoView            VideoView[]
+  VideoLike            VideoLike[]
+  VideoDissLike        VideoDissLike[]
+  VideoComment         VideoComment[]
+  video_tags_id        String[]               @db.ObjectId
+  VideoTags            VideoTags[]            @relation(fields: [video_tags_id], references: [id])
+  WatchHistory         WatchHistory[]
+  WarchLaterVideo      WarchLaterVideo[]
+  PlaylistVideo        PlaylistVideo[]
+  VideoTranscoding     VideoTranscoding?
+  VideoCommentLike     VideoCommentLike[]
+  VideoCommentDissLike VideoCommentDissLike[]
 }
 
 type VideoSubTitle {
@@ -253,50 +256,81 @@ model ChannelView {
 }
 
 model VideoComment {
-  id                   String                 @id @default(auto()) @map("_id") @db.ObjectId
-  video_id             String                 @db.ObjectId
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  text          String
+  video_id      String   @db.ObjectId
+  user_id       String   @db.ObjectId
+  is_deleted    Boolean  @default(false)
+  delete_reason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
   Video                Video                  @relation(fields: [video_id], references: [id])
-  user_id              String                 @db.ObjectId
   User                 User                   @relation(fields: [user_id], references: [id])
-  parent_id            String?                @db.ObjectId
-  Parent               VideoComment?          @relation("CommentParent", fields: [parent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  is_deleted           Boolean                @default(false)
-  is_edited            Boolean                @default(false)
-  total_reply          Int                    @default(0)
-  text                 String
-  createdAt            DateTime               @default(now())
-  like_count           Int                    @default(0)
-  dislike_count        Int                    @default(0)
-  updatedAt            DateTime               @updatedAt
-  VideoComment         VideoComment[]         @relation("CommentParent") @ignore
+  VideoCommentLike     VideoCommentLike[]
+  VideoCommentDissLike VideoCommentDissLike[]
+  replies              VideoCommentReply[]
+
+  @@map("video_comments")
+}
+
+model VideoCommentReply {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  text          String
+  comment_id    String   @db.ObjectId
+  user_id       String   @db.ObjectId
+  is_deleted    Boolean  @default(false)
+  delete_reason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  comment              VideoComment           @relation(fields: [comment_id], references: [id])
+  User                 User                   @relation(fields: [user_id], references: [id])
   VideoCommentLike     VideoCommentLike[]
   VideoCommentDissLike VideoCommentDissLike[]
 
-  @@unique([video_id, user_id])
+  @@map("video_comment_replies")
 }
 
+// Update the like/dislike models to work with both comments and replies
 model VideoCommentLike {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  comment_id String       @db.ObjectId
-  Comment    VideoComment @relation(fields: [comment_id], references: [id])
-  user_id    String       @db.ObjectId
-  video_id   String       @db.ObjectId
-  User       User         @relation(fields: [user_id], references: [id])
-  assignedAt DateTime     @default(now())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  comment_id String?  @db.ObjectId
+  reply_id   String?  @db.ObjectId
+  user_id    String   @db.ObjectId
+  video_id   String   @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  // Relations
+  User    User               @relation(fields: [user_id], references: [id])
+  Video   Video              @relation(fields: [video_id], references: [id])
+  Comment VideoComment?      @relation(fields: [comment_id], references: [id])
+  Reply   VideoCommentReply? @relation(fields: [reply_id], references: [id])
 
   @@unique([comment_id, user_id])
+  @@unique([reply_id, user_id])
+  @@map("video_comment_likes")
 }
 
 model VideoCommentDissLike {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  comment_id String       @db.ObjectId
-  Comment    VideoComment @relation(fields: [comment_id], references: [id])
-  user_id    String       @db.ObjectId
-  video_id   String       @db.ObjectId
-  User       User         @relation(fields: [user_id], references: [id])
-  assignedAt DateTime     @default(now())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  comment_id String?  @db.ObjectId
+  reply_id   String?  @db.ObjectId
+  user_id    String   @db.ObjectId
+  video_id   String   @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  // Relations
+  User    User               @relation(fields: [user_id], references: [id])
+  Video   Video              @relation(fields: [video_id], references: [id])
+  Comment VideoComment?      @relation(fields: [comment_id], references: [id])
+  Reply   VideoCommentReply? @relation(fields: [reply_id], references: [id])
 
   @@unique([comment_id, user_id])
+  @@unique([reply_id, user_id])
+  @@map("video_comment_disslikes")
 }
 
 // model Tags {

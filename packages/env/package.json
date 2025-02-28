@@ -12,12 +12,12 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./next": {
-      "types": "./dist/nextjs.d.ts",
+      "types": "./src/nextjs.ts",
       "import": "./dist/nextjs.mjs",
       "require": "./dist/nextjs.js"
     }
