@@ -112,7 +112,7 @@ export const channelRouter = router({
         return {
           total_page,
           total_videos: total,
-          next_page: input.page < total ? input.page + 1 : null,
+          next_page: input.page < total_page ? input.page + 1 : null,
           prev_page: input.page > 1 ? input.page - 1 : null,
           videos: videos.map(v => ({
             id: v.id,
@@ -167,6 +167,7 @@ export const channelRouter = router({
         total_views: z.number(),
         total_videos: z.number(),
         join_at: z.date(),
+        is_subscribed: z.boolean(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -183,11 +184,11 @@ export const channelRouter = router({
                   is_banned: false,
                   is_published: true,
                   is_ready: true,
-                }
+                },
               },
-            }
-          }
-        }
+            },
+          },
+        },
       });
       if (!channel) {
         throw new TRPCError({
@@ -195,8 +196,22 @@ export const channelRouter = router({
           message: "Channel not found",
         });
       }
+
+      // Check if user is subscribed to the channel
+      let is_subscribed = false;
       if (ctx.session?.user.id) {
         try {
+          const subscription = await prisma.channelSubscription.findUnique({
+            where: {
+              channel_id_user_id: {
+                channel_id: channel.id,
+                user_id: ctx.session.user.id,
+              },
+            },
+          });
+          
+          is_subscribed = !!subscription;
+
           const alreadyView = await prisma.channelView.findUnique({
             where: {
               channel_id_user_id: {
@@ -241,12 +256,15 @@ export const channelRouter = router({
         id: channel.id,
         name: channel.name,
         slug: channel.slug,
-        image: channel.image ? `${env.S3_PUBLIC_ENDPOINT}/${channel.image.key}`: `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
+        image: channel.image
+          ? `${env.S3_PUBLIC_ENDPOINT}/${channel.image.key}`
+          : `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
         description: channel.description,
         subscriber_count: channel.subscriber_count,
         total_views: channel.total_views,
         total_videos: channel._count.Videos,
         join_at: channel.createdAt,
+        is_subscribed,
       };
     }),
   getPlaylist: publicProcedure
@@ -257,27 +275,29 @@ export const channelRouter = router({
         channel_id: z.string(),
       }),
     )
-    .output(z.object({
-      total_page: z.number(),
-      total_playlist: z.number(),
-      next_page: z.number().nullable(),
-      previos_page: z.number().nullable(),
-      playlists: z.array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          description: z.string(),
-          total_videos: z.number(),
-          thumbnail: z.string(),
-          created_at: z.string(),
-        })
-      ),
-    }))
+    .output(
+      z.object({
+        total_page: z.number(),
+        total_playlist: z.number(),
+        next_page: z.number().nullable(),
+        previos_page: z.number().nullable(),
+        playlists: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            description: z.string(),
+            total_videos: z.number(),
+            thumbnail: z.string(),
+            created_at: z.string(),
+          }),
+        ),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const channel = await prisma.channel.findUnique({
         where: {
           id: input.channel_id,
-        }
+        },
       });
       if (!channel) {
         throw new TRPCError({
@@ -293,27 +313,27 @@ export const channelRouter = router({
         include: {
           _count: {
             select: {
-              PlaylistVideo: true
-            }
+              PlaylistVideo: true,
+            },
           },
           PlaylistVideo: {
             select: {
               video: {
                 select: {
                   thumbnail: true,
-                }
-              }
+                },
+              },
             },
-            take: 1
-          }
-        }
-      })
+            take: 1,
+          },
+        },
+      });
       const total_playlist = await prisma.playlist.count({
         where: {
           creater_id: channel.user_id,
           is_private: false,
-        }
-      })
+        },
+      });
       const total_page = Math.ceil(total_playlist / input.limit);
       return {
         next_page: input.page < total_page ? input.page + 1 : null,
@@ -325,9 +345,85 @@ export const channelRouter = router({
           name: playlist.name,
           description: playlist.description,
           total_videos: playlist._count.PlaylistVideo,
-          thumbnail: playlist.PlaylistVideo[0]?.video.thumbnail ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${playlist.PlaylistVideo[0]?.video.thumbnail.key}` : `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
+          thumbnail: playlist.PlaylistVideo[0]?.video.thumbnail
+            ? `${env.S3_PUBLIC_VIDEO_ENDPOINT}/${playlist.PlaylistVideo[0]?.video.thumbnail.key}`
+            : `${env.S3_PUBLIC_VIDEO_ENDPOINT}/thumbnail/default.svg`,
           created_at: playlist.createdAt.toISOString(),
-        }))
+        })),
+      };
+    }),
+  subscribeChannel: protectedApiProcedure
+    .input(
+      z.object({
+        channel_id: z.string(),
+        doSubscribe: z.boolean({
+          message: "true for subscribe, false for unsubscribe",
+        }),
+      }),
+    )
+    .output(z.void())
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const oldSubscribtion = await prisma.channelSubscription.findUnique({
+          where: {
+            channel_id_user_id: {
+              channel_id: input.channel_id,
+              user_id: ctx.session.user.id,
+            },
+          },
+        });
+        if (input.doSubscribe) {
+          if (oldSubscribtion) return;
+
+          await prisma.$transaction([
+            prisma.channelSubscription.create({
+              data: {
+                channel_id: input.channel_id,
+                user_id: ctx.session.user.id,
+              },
+            }),
+            prisma.channel.update({
+              where: {
+                id: input.channel_id,
+              },
+              data: {
+                subscriber_count: {
+                  increment: 1,
+                },
+              },
+            }),
+          ]);
+          return;
+        } else {
+          if (!oldSubscribtion) return;
+          await prisma.$transaction([
+            prisma.channelSubscription.delete({
+              where: {
+                channel_id_user_id: {
+                  channel_id: input.channel_id,
+                  user_id: ctx.session.user.id,
+                },
+              },
+            }),
+            prisma.channel.update({
+              where: {
+                id: input.channel_id,
+              },
+              data: {
+                subscriber_count: {
+                  decrement: 1,
+                },
+              },
+            }),
+          ]);
+          return;
+        }
+      } catch (error) {
+        logger.error("channel.subscribeChannel", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong while subscribing channel",
+        });
       }
     }),
 });

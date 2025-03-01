@@ -10,6 +10,7 @@ import Link from "next/link";
 import { fixNumber } from "@/lib/utils";
 import LikeDisslike from "./LikeDisslike";
 import Image from "next/image";
+import SubscribeButton from "./SubscribeButton";
 
 interface VideoInfoProps {
   title: string;
@@ -42,27 +43,7 @@ export function VideoInfo({
       </Tooltip>
 
       <div className="flex items-center justify-between flex-wrap gap-4 ">
-        <div className="flex items-center gap-4 ">
-          {/* {channelName} */}
-          <Avatar className="border-2 border-primary">
-            <AvatarImage src={channelAvatar} alt={channelName} asChild >
-              <Image src={channelAvatar} alt={channelName} fill  />
-               </AvatarImage>
-            <AvatarFallback>{channelName[0]}</AvatarFallback>
-          </Avatar>
-          <div>
-            <Link
-              href={`/channel/${channelslug}`}
-              className="font-bold hover:text-primary"
-            >
-              {channelName}
-            </Link>
-            <p className="text-sm text-muted-foreground">
-              {fixNumber(subscribers)} subscribers
-            </p>
-          </div>
-          <Button>Subscribe</Button>
-        </div>
+        <SubscribeButton channel_slug={channelslug} />
 
         <div className="flex items-center gap-2">
           <Suspense fallback={null}>

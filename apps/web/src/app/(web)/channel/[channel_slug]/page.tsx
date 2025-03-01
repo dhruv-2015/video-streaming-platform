@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -10,7 +10,9 @@ import { isTRPCClientError, trpc, trpcClient } from '@/trpc/client';
 import { RouterOutputs } from '@workspace/trpc';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/Loader';
-import { Users, PlaySquare, Eye, Calendar } from 'lucide-react';
+import { Users, PlaySquare, Eye, Calendar, Bell } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+// import { toast } from 'sonner';
 
 // Dummy data
 // const channelData = {
@@ -29,31 +31,54 @@ import { Users, PlaySquare, Eye, Calendar } from 'lucide-react';
 // }
 
 export default function ChannelPage({params}: {params: {channel_slug: string}}) {
-    const { data: channel, isLoading, isError, error} = trpc.channel.getChannel.useQuery({
+    const { data: channel, isLoading, isError, error, refetch} = trpc.channel.getChannel.useQuery({
         channel_slug: params.channel_slug
     })
 
   const [isAboutOpen, setIsAboutOpen] = useState(false)
-//   trpc.
+  const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const tab = searchParams.get('tab') || 'videos'
-
-  const handleTabChange = (value: string) => {
-    router.push(`?tab=${value}`)
-  }
+  
+  const subscribeChannel = trpc.channel.subscribeChannel.useMutation({
+    onSuccess: () => {
+      // Refetch channel data to update subscriber count and subscription status
+      refetch()
+    },
+    onError: (error) => {
+      alert(error.data?.message || error.message)
+    }
+  })
   if (isLoading) {
     return <Loader />
   }
   if (isError) {
     throw error
   }
+  const handleSubscribe = () => {
+    if (!session) {
+      // Redirect to login if not logged in
+      router.push('/auth/login?callbackUrl=' + encodeURIComponent(window.location.href))
+      return
+    }
+
+    subscribeChannel.mutate({
+      channel_id: channel?.id,
+      doSubscribe: !channel?.is_subscribed
+    })
+  }
+
+  const handleTabChange = (value: string) => {
+    router.push(`?tab=${value}`)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[1850px] mx-auto">
         {/* Channel Header */}
         <div className="p-6">
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-col md:flex-row md:items-start">
             <Image
               src={channel.image}
               alt={channel.name}
@@ -61,11 +86,32 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
               height={160}
               className="rounded-full"
             />
-            <div className="flex flex-col gap-2">
-              <h1 className="text-2xl font-bold">{channel.name}</h1>
-              <p className="text-sm text-muted-foreground">
-                @{channel.slug} • {channel.subscriber_count} • {channel.total_views}
-              </p>
+            <div className="flex flex-col gap-2 flex-grow">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold">{channel.name}</h1>
+                  <p className="text-sm text-muted-foreground">
+                    @{channel.slug} • {channel.subscriber_count} subscribers • {channel.total_videos} videos
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleSubscribe}
+                  variant={channel.is_subscribed ? "outline" : "default"}
+                  className={`${channel.is_subscribed ? 'hover:bg-red-100 hover:text-red-600' : ''} min-w-[120px]`}
+                  disabled={subscribeChannel.isLoading}
+                >
+                  {subscribeChannel.isLoading ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                  ) : channel.is_subscribed ? (
+                    <>
+                      <Bell className="h-4 w-4 mr-2" />
+                      Subscribed
+                    </>
+                  ) : (
+                    'Subscribe'
+                  )}
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {channel.description.slice(0, 100)}
                 <button
@@ -141,41 +187,74 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
 }
 
 function VideoGrid({channel_id}: {channel_id: string}) {
-  const videos = [
-    {
-      id: '1',
-      title: 'My Framework Investment Should NOT Have Worked Out',
-      thumbnail: 'https://images.unsplash.com/photo-1587620962725-abab7fe55159?auto=format&fit=crop&q=80&w=1920',
-      views: '11 lakh views',
-      date: '16 hours ago'
-    },
-    {
-      id: '2',
-      title: 'The Future of Web Development - New Frameworks in 2024',
-      thumbnail: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?auto=format&fit=crop&q=80&w=1920',
-      views: '324K views',
-      date: '2 days ago'
-    },
-    {
-      id: '3',
-      title: 'Building Modern Applications with Next.js',
-      thumbnail: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=1920',
-      views: '892K views',
-      date: '5 days ago'
-    },
-    {
-      id: '4',
-      title: 'Why TypeScript is Taking Over JavaScript',
-      thumbnail: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?auto=format&fit=crop&q=80&w=1920',
-      views: '1.2M views',
-      date: '1 week ago'
+  const [videos, setVideos] = useState<RouterOutputs['channel']['getVideos']['videos']>([])
+  const [hasMore, setHasMore] = useState<boolean>(true)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [nextPage, setNextPage] = useState<number>(1)
+  const observerTarget = useRef<HTMLDivElement>(null)
+
+  async function loadMore(page: number) {
+    if (isLoading) return
+    setIsLoading(true)
+    try {
+      console.log("Loading videos page:", page)
+      const result = await trpcClient.channel.getVideos.query({
+        channel_id,
+        limit: 12,
+        page
+      })
+
+      setVideos(prev => [...prev, ...result.videos].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i))
+
+      if (result.next_page === null) {
+        setHasMore(false)
+      } else {
+        setNextPage(result.next_page)
+      }
+    } catch (error) {
+      console.error("Error loading videos:", error)
+      if (isTRPCClientError(error)) {
+        alert(error.data?.message || error.message)
+      }
+    } finally {
+      setIsLoading(false)
     }
-  ]
+  }
+
+  useEffect(() => {
+    // Initial load
+    loadMore(1);
+  }, [channel_id])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting && hasMore && !isLoading) {
+          console.log("Observer triggered, loading page:", nextPage)
+          loadMore(nextPage)
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    )
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current)
+    }
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasMore, isLoading, nextPage, channel_id])
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {videos.length === 0 && !isLoading && (
+        <div className="col-span-full py-10 text-center text-muted-foreground">
+          No videos found for this channel
+        </div>
+      )}
       {videos.map((video) => (
-        <div key={video.id} className="group cursor-pointer">
+        <Link href={`/video/${video.id}`} key={video.id} className="group cursor-pointer">
           <div className="aspect-video relative">
             <Image
               src={video.thumbnail}
@@ -185,7 +264,7 @@ function VideoGrid({channel_id}: {channel_id: string}) {
             />
             {/* Video duration overlay */}
             <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs text-white">
-              12:34
+              {/* Duration would be added here if available */}
             </div>
             {/* Play button overlay on hover */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -205,11 +284,18 @@ function VideoGrid({channel_id}: {channel_id: string}) {
               {video.title}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {video.views} • {video.date}
+              {video.view_count} views • {new Date(video.published_at || video.created_at).toLocaleDateString()}
             </p>
           </div>
-        </div>
+        </Link>
       ))}
+      {isLoading && (
+        <div className="col-span-full flex justify-center items-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
+      {/* Intersection Observer Target */}
+      <div ref={observerTarget} className="h-20 w-full col-span-full"></div>
     </div>
   )
 }
@@ -244,15 +330,19 @@ function PlaylistGrid({channel_id}: {channel_id: string}) {
 
 const [playlists, setPlaylists] = useState<RouterOutputs['channel']['getPlaylist']['playlists']>([])
 const [hasMore, setHasMore] = useState<boolean>(true)
-const [isLoading, setIsLoading] = useState<boolean>(true)
+const [isLoading, setIsLoading] = useState<boolean>(false)
 const [nextPage, setNextPage] = useState<number>(1)
+const observerTarget = useRef<HTMLDivElement>(null)
+
   async function loadMore(page: number) {
+    if (isLoading) return
     setIsLoading(true)
     try {
+        console.log("Loading playlists page:", page)
         const playlists = await trpcClient.channel.getPlaylist.query({
             channel_id,
             limit: 10,
-            page: 1 
+            page
           })
 
         setPlaylists(pre => [...pre, ...playlists.playlists].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i))
@@ -263,6 +353,7 @@ const [nextPage, setNextPage] = useState<number>(1)
             setNextPage(playlists.next_page)
         }
     } catch (error) {
+        console.error("Error loading playlists:", error)
         if (isTRPCClientError(error)) {
             alert(error.data?.message || error.message)
         }
@@ -272,8 +363,29 @@ const [nextPage, setNextPage] = useState<number>(1)
   }
 
   useEffect(() => {
+    // Initial load
     loadMore(1);
-  },[])
+  },[channel_id])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting && hasMore && !isLoading) {
+          console.log("Observer triggered, loading page:", nextPage)
+          loadMore(nextPage)
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    )
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current)
+    }
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasMore, isLoading, nextPage, channel_id])
 
 //   const {} = trpc.channel.getPlaylist.useQuery({
 //     channel_id,
@@ -283,6 +395,11 @@ const [nextPage, setNextPage] = useState<number>(1)
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {playlists.length === 0 && !isLoading && (
+        <div className="col-span-full py-10 text-center text-muted-foreground">
+          No playlists found for this channel
+        </div>
+      )}
       {playlists.map((playlist) => (
         <Link href={`/playlist/${playlist.id}`} key={playlist.id} className="group cursor-pointer">
           <div className="relative">
@@ -323,10 +440,13 @@ const [nextPage, setNextPage] = useState<number>(1)
           </div>
         </Link>
       ))}
-      {isLoading && (<div className='flex justify-center items-center w-full'>Loading...</div>)}
-      {hasMore && !isLoading && (
-        <Button onClick={() => loadMore(nextPage)}></Button>
+      {isLoading && (
+        <div className="col-span-full flex justify-center items-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
       )}
+      {/* Intersection Observer Target */}
+      <div ref={observerTarget} className="h-20 w-full col-span-full"></div>
     </div>
   )
 }

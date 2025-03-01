@@ -20,6 +20,11 @@ const nextConfig = {
         port: '4568',
       },
       {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000'
+      },
+      {
         protocol: 'https',
         hostname: 'picsum.photos'
       },
