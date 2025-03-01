@@ -3,6 +3,8 @@ import path from "path";
 import fs from "fs";
 import logger from "./logger";
 import { ChildProcess } from "child_process";
+import { env } from "@workspace/env";
+import { Filamanager } from "./FileManager";
 
 interface FFmpegProgress {
   percent: number;
@@ -228,7 +230,9 @@ class FfmpegWrapper {
 
       // Handle stderr (includes progress information)
       process.stderr.on("data", (data: string) => {
-        // console.log(data);
+        // if (env.LOG) {
+        //   console.log(data);
+        // }
 
         // Extract duration if not already found
         if (!duration) {
@@ -285,7 +289,7 @@ class FfmpegWrapper {
           if (onEnd) onEnd();
           resolve();
         } else {
-          const error = new Error(`FFmpeg process exited with code ${code}`);
+          const error = new Error(`FFmpeg process exited with code ${code} ${args.map(arg => arg.replace(/\\/g, "/"))}`);
           if (onError) onError(error);
           reject(error);
         }
@@ -1040,7 +1044,7 @@ export class VideoTranscoder {
         "+faststart+negative_cts_offsets",
         "-video_track_timescale",
         "90000",
-        `${variantPath}`
+        `${variantPath.replace(/\\/g, "/")}`
       );
 
       pakagetCommandArgs.push(
@@ -1078,7 +1082,7 @@ export class VideoTranscoder {
       }
       const language = this.getLanguageCode(stream.tags?.language);
       // const language = (stream.tags?.language && stream.tags?.language != "und") ? stream.tags?.language : "eng";
-      const title = stream.tags?.title || `Audio_Track_${index + 1} ${language}`;
+      const title = stream.tags?.title + " " + language || `Audio_Track_${index + 1} ${language}`;
       const channels = stream.channels ?? 2;
       filterComplex[totalParts];
 
@@ -1099,7 +1103,7 @@ export class VideoTranscoder {
           "aac",
           "-b:a",
           "160k",
-          `${audioPath}`
+          `${audioPath.replace(/\\/g, "/")}`
         );
         pakagetCommandArgs.push(
           `in=${audioPath},stream=audio,segment_template=${path.join(
@@ -1144,7 +1148,7 @@ export class VideoTranscoder {
           "aac",
           "-b:a",
           "320k",
-          `${audioPath1}`
+          `${audioPath1.replace(/\\/g, "/")}`
         );
         // pakagetCommandArgs.push(
         //   `in=${audioPath1},stream=audio,segment_template=${path.join(
@@ -1178,7 +1182,7 @@ export class VideoTranscoder {
           "160k",
           "-af",
           `pan=stereo|c0=0.5*c2+0.707*c0+0.707*c4+0.5*c3|c1=0.5*c2+0.707*c1+0.707*c5+0.5*c3`,
-          `${audioPath2}`
+          `${audioPath2.replace(/\\/g, "/")}`
         );
 
         pakagetCommandArgs.push(
@@ -1218,7 +1222,7 @@ export class VideoTranscoder {
           "aac",
           "-b:a",
           "384k",
-          `${audioPath1}`
+          `${audioPath1.replace(/\\/g, "/")}`
         );
         // pakagetCommandArgs.push(
         //   `in=${audioPath1},stream=audio,segment_template=${path.join(
@@ -1254,7 +1258,7 @@ export class VideoTranscoder {
           "160k",
           "-af",
           `pan=stereo|c0=0.5*c2+0.707*c0+0.5*c4+0.5*c6+0.5*c3|c1=0.5*c2+0.707*c1+0.5*c5+0.5*c7+0.5*c3`,
-          `${audioPath2}`
+          `${audioPath2.replace(/\\/g, "/")}`
         );
 
         pakagetCommandArgs.push(
@@ -1290,7 +1294,7 @@ export class VideoTranscoder {
         `[0:a:${index}]`,
         "-c:a",
         "aac",
-        `${audioPath1}`
+        `${audioPath1.replace(/\\/g, "/")}`
       );
       // pakagetCommandArgs.push(
       //   `in=${audioPath1},stream=audio,segment_template=${path.join(
@@ -1321,7 +1325,7 @@ export class VideoTranscoder {
         "aac",
         "-ac",
         "2",
-        `${audioPath2}`
+        `${audioPath2.replace(/\\/g, "/")}`
       );
 
       pakagetCommandArgs.push(
@@ -1371,7 +1375,7 @@ export class VideoTranscoder {
         `0:s:${index}`,
         "-c:s",
         codec,
-        `${subtitlePath}`
+        `${subtitlePath.replace(/\\/g, "/")}`
       );
       finalMetadata.subtitle.push({
         part: totalParts,
@@ -1626,6 +1630,9 @@ export class VideoTranscoder {
         ...commands.finalMetadata.audio,
         ...commands.finalMetadata.subtitle,
       ];
+      allStreams.map((stream) => {
+        Filamanager.createDirectory(path.dirname(stream.output))
+      })
       const pakagerRes: {
         image: string;
         vtt: string;

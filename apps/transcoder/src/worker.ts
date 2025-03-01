@@ -109,7 +109,8 @@ export const worker = new Worker<MyData>(
 
       // Initialize transcoder
       const transcoder = new VideoTranscoder(
-        process.env.GPU === "true",
+        true,
+        // process.env.GPU === "true",
         "ffmpeg",
         "packager",
         6,
@@ -123,7 +124,7 @@ export const worker = new Worker<MyData>(
       const outputDir = `./tmp/transcoded/${job.data.video_id}`;
 
       // Create output directory
-      await Filamanager.createDirectory(outputDir);
+      Filamanager.createDirectory(outputDir);
       logger.debug('Created output directory', { outputDir });
 
       // Download source file
@@ -140,6 +141,14 @@ export const worker = new Worker<MyData>(
       // Start transcoding
       const result = await transcoder.transcode(orignalFile, outputDir, {
         abortController,
+        onFfmpegStart(data) {
+          logger.info("FFmpeg process started", { 
+            jobId: job.id,
+            videoId: job.data.video_id,
+            part: data.part,
+            args: data.args.join(" ")
+          });
+        },
         onFfmpegCommandGenerate(data) {
           logger.info("Generated FFmpeg commands", { 
             jobId: job.id,
@@ -148,6 +157,7 @@ export const worker = new Worker<MyData>(
           });
         },
         onFfmpegError(data) {
+          
           logger.error("FFmpeg error", { 
             jobId: job.id,
             videoId: job.data.video_id,
@@ -268,13 +278,13 @@ export const worker = new Worker<MyData>(
 
       // Cleanup temporary files
       try {
-        fs.rmSync(outputDir, { recursive: true, force: true });
-        fs.unlinkSync(orignalFile);
-        logger.debug('Cleaned up temporary files', {
-          jobId: job.id,
-          outputDir,
-          orignalFile
-        });
+        // fs.rmSync(outputDir, { recursive: true, force: true });
+        // fs.unlinkSync(orignalFile);
+        // logger.debug('Cleaned up temporary files', {
+        //   jobId: job.id,
+        //   outputDir,
+        //   orignalFile
+        // });
       } catch (cleanupError) {
         logger.error("Failed to cleanup temporary files", { 
           jobId: job.id,
@@ -304,8 +314,8 @@ export const worker = new Worker<MyData>(
       try {
         const orignalFile = `./tmp/${job.data.video_id}${path.extname(job.data.file.key)}`;
         const outputDir = `./tmp/transcoded/${job.data.video_id}`;
-        fs.rmSync(outputDir, { recursive: true, force: true });
-        fs.unlinkSync(orignalFile);
+        // fs.rmSync(outputDir, { recursive: true, force: true });
+        // fs.unlinkSync(orignalFile);
       } catch (cleanupError) {
         logger.error("Failed to cleanup files", { error: cleanupError });
       }

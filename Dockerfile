@@ -172,6 +172,9 @@ COPY --from=transcoderprune /app/out/full/ .
 RUN pnpm build
 RUN pnpm --filter @workspace/transcoder deploy --prod --frozen-lockfile /out
 
+
+FROM base AS transcoderdownloader
+WORKDIR /app
 # Install required packages
 RUN apt-get update && apt-get install -y \
     wget \
@@ -179,8 +182,33 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install FFmpeg based on architecture
-COPY ./apps/transcoder/download.sh download.sh
-RUN bash download.sh
+COPY ./download.sh download.sh
+# RUN bash download.sh
+RUN if [ "$(uname -m)" = "aarch64" ]; then \
+wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz \
+&& tar xf ffmpeg-release-arm64-static.tar.xz \
+&& mv ffmpeg-*-arm64-static/ffmpeg /app/ \
+&& mv ffmpeg-*-arm64-static/ffprobe /app/ \
+&& rm -rf ffmpeg-*-arm64-static*; \
+else \
+wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
+&& tar xf ffmpeg-release-amd64-static.tar.xz \
+&& mv ffmpeg-*-amd64-static/ffmpeg /app/ \
+&& mv ffmpeg-*-amd64-static/ffprobe /app/ \
+&& rm -rf ffmpeg-*-amd64-static*; \
+fi \
+&& chmod +x /app/ffmpeg \
+&& chmod +x /app/ffprobe
+
+# Install Shaka Packager based on architecture
+RUN if [ "$(uname -m)" = "aarch64" ]; then \
+wget https://github.com/shaka-project/shaka-packager/releases/download/v2.6.1/packager-linux-arm64 \
+&& mv packager-linux-arm64 /app/packager; \
+else \
+wget https://github.com/shaka-project/shaka-packager/releases/download/v2.6.1/packager-linux-x64 \
+&& mv packager-linux-x64 /app/packager; \
+fi \
+&& chmod +x /app/packager
 
 
 FROM base AS transcoderrunner
@@ -190,6 +218,7 @@ WORKDIR /app
 
 # COPY ./apps/transcoder/download.sh download.sh
 # RUN bash download.sh
+
 
 # # Install FFmpeg based on architecture
 # RUN if [ "$(uname -m)" = "aarch64" ]; then \
@@ -219,16 +248,16 @@ WORKDIR /app
 #     && chmod +x /usr/local/bin/packager
 
 # Copy application files
+COPY --from=transcoderdownloader /app/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=transcoderdownloader /app/ffprobe /usr/local/bin/ffprobe
+COPY --from=transcoderdownloader /app/packager /usr/local/bin/packager
+RUN chmod +x /usr/local/bin/ffmpeg
+RUN chmod +x /usr/local/bin/ffprobe
+RUN chmod +x /usr/local/bin/packager
 COPY --from=transcoderbuilder /out/dist .
 COPY --from=transcoderbuilder /out/node_modules ./node_modules
 COPY --from=transcoderbuilder /out/package.json .
 COPY --from=transcoderbuilder /app/packages/database/generated ./packages/database/generated
-COPY --from=transcoderbuilder /app/ffmpeg /usr/local/bin/ffmpeg
-COPY --from=transcoderbuilder /app/ffprobe /usr/local/bin/ffprobe
-COPY --from=transcoderbuilder /app/packager /usr/local/bin/packager
-RUN chmod +x /usr/local/bin/ffmpeg
-RUN chmod +x /usr/local/bin/ffprobe
-RUN chmod +x /usr/local/bin/packager
 
 
 

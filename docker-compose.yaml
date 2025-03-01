@@ -26,12 +26,12 @@ services:
     ports:
       - "3000:3000"
 
-  transcoder:
-    build:
-      context: .
-      target: transcoderrunner
-    image: test:transcoder
-    env_file:
-      - .env
-    environment:
-      - AUTH_TRUST_HOST=true
+  # transcoder:
+  #   build:
+  #     context: .
+  #     target: transcoderrunner
+  #   image: test:transcoder
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - AUTH_TRUST_HOST=true
