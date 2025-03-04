@@ -32,7 +32,7 @@ import {
 import { RouterOutputs } from "@workspace/trpc";
 import { PlaylistSelector } from "../PlaylistSelector/page";
 
-const VideoCart = async ({
+export const VideoCart = async ({
   video,
 }: {
   video: RouterOutputs["video"]["getVideos"]["videos"][0];
@@ -100,7 +100,7 @@ const VideoCart = async ({
                 </span>
               </div>
             </div>
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
                   <MoreVertical className="h-4 w-4" />
@@ -126,7 +126,7 @@ const VideoCart = async ({
                   Share
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> */}
           </div>
         </div>
       </div>

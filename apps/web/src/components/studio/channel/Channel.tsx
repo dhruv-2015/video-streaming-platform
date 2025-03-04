@@ -31,10 +31,10 @@ export default async function StudioDashboard() {
         <UploadVideoCard />
 
         {/* Recent Comments */}
-        <RecentComments />
+        {/* <RecentComments /> */}
 
         {/* Recent Subscribers */}
-        <RecentSubscribers />
+        {/* <RecentSubscribers /> */}
       </div>
 
 
