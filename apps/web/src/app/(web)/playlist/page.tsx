@@ -236,6 +236,11 @@ export default function PlaylistPage() {
             <div>Error loading playlists</div>
             <Button onClick={() => refetch()}>Retry</Button>
         </div>)}
+        {!isLoading && !isError && playlists && playlists.length === 0 && (
+          <div className="flex mt-5 col-span-1 sm:col-span-3 lg:col-span-5 w-full justify-center items-center">
+            <p className="text-lg">No Playlist found</p>
+          </div>
+        )}
         {playlists &&
           playlists.map(playlist => (
             <PlaylistCard key={playlist.id} playlist={playlist} />

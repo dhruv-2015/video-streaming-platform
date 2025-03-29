@@ -109,7 +109,7 @@ export const worker = new Worker<MyData>(
 
       // Initialize transcoder
       const transcoder = new VideoTranscoder(
-        true,
+        false,
         // process.env.GPU === "true",
         "ffmpeg",
         "packager",

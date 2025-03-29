@@ -28,7 +28,7 @@ A modern video streaming platform built with Next.js, Express, and MongoDB.
 ### Prerequisites
 
 - Node.js >= 20
-- pnpm
+- pnpm ( npm i -g pnpm )
 - MongoDB
 - Redis
 - S3-compatible storage (or local S3 server)
@@ -36,4 +36,60 @@ A modern video streaming platform built with Next.js, Express, and MongoDB.
 
 ### Environment Setup
 
-Create a `.env.local` file with the following variables:
+- Copy .env.example to .env.local
+- fill all variables
+- add http://localhost:3000/api/auth/callback/google and http://localhost:5000/api/auth/callback/google as callback in google console
+- for s3  i am using `s3rver` npm pakage
+```js
+// s3-server.js
+const S3rver = require("s3rver");
+const fs = require('fs');
+
+const corsConfig = require.resolve('./cors.xml');
+
+const cors = fs.readFileSync(corsConfig)
+const { fromEvent } = require('rxjs');
+const { filter } = require('rxjs/operators');
+
+const s3rver = new S3rver({
+    address: "0.0.0.0",
+    port: 4568,
+    directory: ".",
+
+    configureBuckets: [
+        {
+            name: 'test-video-bucket',
+            configs: [cors],
+        },
+        {
+            name: 'test-bucket',
+            configs: [cors],
+        },
+    ],
+});
+
+s3rver.run((err, address) => {
+    console.log(address, err);
+});
+
+```
+- makesure to modify cors rules
+```xml
+<!-- cors.xml -->
+<CORSConfiguration>
+ <CORSRule>
+   <AllowedOrigin>*</AllowedOrigin>
+
+   <AllowedMethod>PUT</AllowedMethod>
+   <AllowedMethod>POST</AllowedMethod>
+   <AllowedMethod>DELETE</AllowedMethod>
+
+   <AllowedHeader>*</AllowedHeader>
+ </CORSRule>
+ <CORSRule>
+   <AllowedOrigin>*</AllowedOrigin>
+   <AllowedMethod>GET</AllowedMethod>
+ </CORSRule>
+</CORSConfiguration>
+``` 
+- i am using docker to host chroma db (	`chromadb/chroma image)

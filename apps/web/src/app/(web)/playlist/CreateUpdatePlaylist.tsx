@@ -81,7 +81,7 @@ export const CreatePlaylistModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit playlist</DialogTitle>
+          <DialogTitle>{state && state.isCreated ? "Edit" : "Create"} playlist</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

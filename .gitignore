@@ -28,7 +28,6 @@ build
 dist
 .cache
 
-
 # Debug
 npm-debug.log*
 logs
@@ -36,3 +35,5 @@ logs
 # Misc
 .DS_Store
 *.pem
+
+tempCodeRunnerFile*

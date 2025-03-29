@@ -35,7 +35,7 @@ export default async function Home({ params,searchParams }: { params: { video_id
             {/* Main Content */}
             <div className="lg:col-span-3">
               <VideoPlayer
-              //  autoPlay
+               autoPlay
                video={{
                 poster: video.thumbnail,
                 src: video.stream.m3u8,

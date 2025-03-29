@@ -239,10 +239,10 @@ const VideoDetailsPage = ({ params }: { params: { video_id: string } }) => {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList>
+        {/* <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+        </TabsList> */}
 
         <TabsContent value="details">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -557,9 +557,9 @@ const VideoDetailsPage = ({ params }: { params: { video_id: string } }) => {
           </div>
         </TabsContent>
 
-        <TabsContent value="analytics">
+        {/* <TabsContent value="analytics">
           <Analytics />
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   );

@@ -3,12 +3,14 @@
   "version": "1",
   "private": true,
   "scripts": {
-    "build": "turbo build",
+    "build": "env-cmd -f .env.local turbo build",
     "build:docker": "pnpm run docker:api && pnpm run docker:web && pnpm run docker:transcoder",
+    "prestart": "pnpm run build",
+    "start": "npx concurrently \"pnpm dev:api\"  \"pnpm dev:web\"  \"pnpm run dev --filter=@workspace/transcoder\"",
     "start:docker": "pnpm run docket:start",
-    "docker:api": "docker build -t test:api --target apirunner .",
-    "docker:web": "docker build -t test:web --target webrunner .",
-    "docker:transcoder": "docker build -t test:transcoder --target transcoderrunner .",
+    "docker:api": "docker build -t dhruv2015/rpi:video-streaming-platform-amd64-api --platform linux/amd64 --target apirunner .",
+    "docker:web": "docker build -t dhruv2015/rpi:video-streaming-platform-amd64-web --platform linux/amd64 --target webrunner .",
+    "docker:transcoder": "docker build -t dhruv2015/rpi:video-streaming-platform-amd64-transcoder --platform linux/amd64 --target transcoderrunner .",
     "docket:start": "docker-compose up",
     "dev": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\"",
     "dev:web": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\" --filter=@workspace/web",
@@ -31,9 +33,17 @@
   },
   "pnpm": {
     "supportedArchitectures": {
-      "os": ["win32", "linux"],
-      "cpu": ["x64", "arm64"],
-      "libc": ["glibc"]
+      "os": [
+        "win32",
+        "linux"
+      ],
+      "cpu": [
+        "x64",
+        "arm64"
+      ],
+      "libc": [
+        "glibc"
+      ]
     }
   }
 }

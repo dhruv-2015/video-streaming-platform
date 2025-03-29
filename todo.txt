@@ -1,0 +1,6 @@
+docker build -t dhruv2015/rpi:video-streaming-platform-arm64-api --platform linux/arm64 --target apirunner .                                                    
+docker build -t dhruv2015/rpi:video-streaming-platform-amd64-api --platform linux/amd64 --target apirunner .                                                    
+docker push dhruv2015/rpi:video-streaming-platform-arm64-api 
+docker push dhruv2015/rpi:video-streaming-platform-amd64-api
+docker manifest create dhruv2015/rpi:video-streaming-platform-master-api dhruv2015/rpi:video-streaming-platform-arm64-api dhruv2015/rpi:video-streaming-platform-amd64-api
+docker manifest push dhruv2015/rpi:video-streaming-platform-master-api
