@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Clock, History, Home, Menu, ThumbsUp, Video,MonitorPlay, Plus,  } from "lucide-react";
+import {
+  Clock,
+  History,
+  Home,
+  Menu,
+  ThumbsUp,
+  Video,
+  MonitorPlay,
+  Plus,
+} from "lucide-react";
 
 // import { NavMain } from "@/components/nav-main";
 // import { NavProjects } from "@/components/nav-projects";
@@ -23,12 +32,11 @@ import Link from "next/link";
 // This is sample data.
 
 export function AppSidebar() {
-
-  const { toggleSidebar,setOpen } = useSidebar();
+  const { toggleSidebar, setOpen } = useSidebar();
   // React.useEffect(() => {setOpen(false);},[]);
 
   return (
-    <Sidebar collapsible="icon" >
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -50,7 +58,7 @@ export function AppSidebar() {
                   </div>
                 </Button>
                 <span>
-                  <Link href="/" className="text-2xl font-bold">
+                  <Link prefetch href="/" className="text-2xl font-bold">
                     MyTube
                   </Link>
                 </span>
@@ -66,7 +74,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Home" asChild>
-                <Link href="/">
+                <Link prefetch href="/">
                   <Home className="mr-2 h-4 w-4" />
                   <span>Home</span>
                 </Link>
@@ -75,30 +83,30 @@ export function AppSidebar() {
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="History" asChild>
-                <Link href="/history">
+                <Link prefetch href="/history">
                   <History className="mr-2 h-4 w-4" />
                   <span>History</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            
+
             {/* <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>Playlists</SidebarGroupLabel> */}
             {/* <SidebarMenu> */}
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Playlist" asChild>
-                  <Link href="/playlist">
-                    <Plus className="mr-2 h-4 w-4" />
-                    <span>Playlists</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Playlist" asChild>
+                <Link prefetch href="/playlist">
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span>Playlists</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             {/* </SidebarMenu> */}
-          {/* </SidebarGroup> */}
+            {/* </SidebarGroup> */}
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Watch later" asChild>
-                <Link href="/watchlater">
+                <Link prefetch href="/watchlater">
                   <Clock className="mr-2 h-4 w-4" />
                   <span>Watch later</span>
                 </Link>
@@ -107,7 +115,7 @@ export function AppSidebar() {
 
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Liked Videos" asChild>
-                <Link href="/likes">
+                <Link prefetch href="/likes">
                   <ThumbsUp className="mr-2 h-4 w-4" />
                   <span>Liked Videos</span>
                 </Link>
@@ -119,9 +127,9 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Creaters</SidebarGroupLabel>
           <SidebarMenu>
-          <SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton tooltip="Home" asChild>
-                <Link href="/studio">
+                <Link prefetch href="/studio">
                   <MonitorPlay className="mr-2 h-4 w-4" />
                   <span>Channel</span>
                 </Link>
@@ -129,7 +137,7 @@ export function AppSidebar() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Your Videos" asChild>
-                <Link href="/studio/video">
+                <Link prefetch href="/studio/video">
                   <Video className="mr-2 h-4 w-4" />
                   <span>Your Videos</span>
                 </Link>

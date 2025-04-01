@@ -7,7 +7,7 @@ import { env } from "@workspace/env/next";
  */
 const nextConfig = {
   // transpilePackages: ["@workspace/ui"],
-  output: !!process.env.VERCEL ? "export" :"standalone",
+  output: !!process.env.VERCEL ? "export" : "standalone",
   eslint: {
     ignoreDuringBuilds: true,
     // dirs: ["app", "components", "lib", "trpc", "hooks"],
@@ -15,33 +15,37 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '4568',
+        protocol: "http",
+        hostname: "localhost",
+        port: "4568",
       },
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '3000'
+        protocol: "http",
+        hostname: "localhost",
+        port: "3000",
       },
       {
-        protocol: 'https',
-        hostname: 'picsum.photos'
+        protocol: "https",
+        hostname: "picsum.photos",
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com'
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
-        protocol: 'http',
-        hostname: "100.85.36.39"
+        hostname: "127.0.0.1",
+        protocol: "http",
+        port: "4568",
       },
       {
-        protocol: 'https',
-        hostname: "images.unsplash.com"
-      }
+        protocol: "http",
+        hostname: "100.85.36.39",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
     ],
-
   },
   typescript: {
     ignoreBuildErrors: true,

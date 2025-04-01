@@ -5,8 +5,7 @@
   "scripts": {
     "build": "env-cmd -f .env.local turbo build",
     "build:docker": "pnpm run docker:api && pnpm run docker:web && pnpm run docker:transcoder",
-    "prestart": "pnpm run build",
-    "start": "npx concurrently \"pnpm dev:api\"  \"pnpm dev:web\"  \"pnpm run dev --filter=@workspace/transcoder\"",
+    "start": "pnpx concurrently \"pnpm dev:api\"  \"pnpm dev:web\"  \"pnpm run dev --filter=@workspace/transcoder\"",
     "start:docker": "pnpm run docket:start",
     "docker:api": "docker build -t dhruv2015/rpi:video-streaming-platform-amd64-api --platform linux/amd64 --target apirunner .",
     "docker:web": "docker build -t dhruv2015/rpi:video-streaming-platform-amd64-web --platform linux/amd64 --target webrunner .",

@@ -1,17 +1,23 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react'
-import Image from 'next/image'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link';
-import { isTRPCClientError, trpc, trpcClient } from '@/trpc/client';
-import { RouterOutputs } from '@workspace/trpc';
-import { Button } from '@/components/ui/button';
-import Loader from '@/components/Loader';
-import { Users, PlaySquare, Eye, Calendar, Bell } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import React, { useEffect, useState, useRef } from "react";
+import Image from "next/image";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { isTRPCClientError, trpc, trpcClient } from "@/trpc/client";
+import { RouterOutputs } from "@workspace/trpc";
+import { Button } from "@/components/ui/button";
+import Loader from "@/components/Loader";
+import { Users, PlaySquare, Eye, Calendar, Bell } from "lucide-react";
+import { useSession } from "next-auth/react";
 // import { toast } from 'sonner';
 
 // Dummy data
@@ -30,48 +36,60 @@ import { useSession } from 'next-auth/react';
 //   url: 'youtube.com/@LieInAnime'
 // }
 
-export default function ChannelPage({params}: {params: {channel_slug: string}}) {
-    const { data: channel, isLoading, isError, error, refetch} = trpc.channel.getChannel.useQuery({
-        channel_slug: params.channel_slug
-    })
+export default function ChannelPage({
+  params,
+}: {
+  params: { channel_slug: string };
+}) {
+  const {
+    data: channel,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = trpc.channel.getChannel.useQuery({
+    channel_slug: params.channel_slug,
+  });
 
-  const [isAboutOpen, setIsAboutOpen] = useState(false)
-  const { data: session } = useSession()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const tab = searchParams.get('tab') || 'videos'
-  
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") || "videos";
+
   const subscribeChannel = trpc.channel.subscribeChannel.useMutation({
     onSuccess: () => {
       // Refetch channel data to update subscriber count and subscription status
-      refetch()
+      refetch();
     },
-    onError: (error) => {
-      alert(error.data?.message || error.message)
-    }
-  })
+    onError: error => {
+      alert(error.data?.message || error.message);
+    },
+  });
   if (isLoading) {
-    return <Loader />
+    return <Loader />;
   }
   if (isError) {
-    throw error
+    throw error;
   }
   const handleSubscribe = () => {
     if (!session) {
       // Redirect to login if not logged in
-      router.push('/auth/login?callbackUrl=' + encodeURIComponent(window.location.href))
-      return
+      router.push(
+        "/auth/login?callbackUrl=" + encodeURIComponent(window.location.href),
+      );
+      return;
     }
 
     subscribeChannel.mutate({
       channel_id: channel?.id,
-      doSubscribe: !channel?.is_subscribed
-    })
-  }
+      doSubscribe: !channel?.is_subscribed,
+    });
+  };
 
   const handleTabChange = (value: string) => {
-    router.push(`?tab=${value}`)
-  }
+    router.push(`?tab=${value}`);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,13 +109,14 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
                 <div>
                   <h1 className="text-2xl font-bold">{channel.name}</h1>
                   <p className="text-sm text-muted-foreground">
-                    @{channel.slug} • {channel.subscriber_count} subscribers • {channel.total_videos} videos
+                    @{channel.slug} • {channel.subscriber_count} subscribers •{" "}
+                    {channel.total_videos} videos
                   </p>
                 </div>
-                <Button 
+                <Button
                   onClick={handleSubscribe}
                   variant={channel.is_subscribed ? "outline" : "default"}
-                  className={`${channel.is_subscribed ? 'hover:bg-red-100 hover:text-red-600' : ''} min-w-[120px]`}
+                  className={`${channel.is_subscribed ? "hover:bg-red-100 hover:text-red-600" : ""} min-w-[120px]`}
                   disabled={subscribeChannel.isLoading}
                 >
                   {subscribeChannel.isLoading ? (
@@ -108,7 +127,7 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
                       Subscribed
                     </>
                   ) : (
-                    'Subscribe'
+                    "Subscribe"
                   )}
                 </Button>
               </div>
@@ -133,15 +152,22 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
             <div className="space-y-4 py-4">
               <div>
                 <h3 className="font-semibold">Description</h3>
-                <p className="text-sm text-muted-foreground">{channel.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  {channel.description}
+                </p>
               </div>
 
               <div className="space-y-2">
                 <h3 className="font-semibold">Channel details</h3>
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p><Link href={`/channel/${channel.slug}`} className="text-sm text-blue-500 hover:underline">
-                    {`/channel/${channel.slug}`}
-                  </Link></p>
+                  <p>
+                    <Link
+                      href={`/channel/${channel.slug}`}
+                      className="text-sm text-blue-500 hover:underline"
+                    >
+                      {`/channel/${channel.slug}`}
+                    </Link>
+                  </p>
                   <p className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     {channel.subscriber_count}
@@ -169,11 +195,21 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
           <div className="max-w-[1850px] mx-auto">
             <Tabs defaultValue={tab} onValueChange={handleTabChange}>
               <TabsList className="w-full justify-start rounded-none px-6 bg-transparent">
-                <TabsTrigger value="videos" className="data-[state=active]:border-b-2 data-[state=active]:border-black rounded-none">Videos</TabsTrigger>
-                <TabsTrigger value="playlists" className="data-[state=active]:border-b-2 data-[state=active]:border-black rounded-none">Playlists</TabsTrigger>
+                <TabsTrigger
+                  value="videos"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-black rounded-none"
+                >
+                  Videos
+                </TabsTrigger>
+                <TabsTrigger
+                  value="playlists"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-black rounded-none"
+                >
+                  Playlists
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="videos" className="p-6">
-                <VideoGrid channel_id={channel.id}/>
+                <VideoGrid channel_id={channel.id} />
               </TabsContent>
               <TabsContent value="playlists" className="p-6">
                 <PlaylistGrid channel_id={channel.id} />
@@ -183,68 +219,74 @@ export default function ChannelPage({params}: {params: {channel_slug: string}}) 
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-function VideoGrid({channel_id}: {channel_id: string}) {
-  const [videos, setVideos] = useState<RouterOutputs['channel']['getVideos']['videos']>([])
-  const [hasMore, setHasMore] = useState<boolean>(true)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [nextPage, setNextPage] = useState<number>(1)
-  const observerTarget = useRef<HTMLDivElement>(null)
+function VideoGrid({ channel_id }: { channel_id: string }) {
+  const [videos, setVideos] = useState<
+    RouterOutputs["channel"]["getVideos"]["videos"]
+  >([]);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [nextPage, setNextPage] = useState<number>(1);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   async function loadMore(page: number) {
-    if (isLoading) return
-    setIsLoading(true)
+    if (isLoading) return;
+    setIsLoading(true);
     try {
-      console.log("Loading videos page:", page)
+      console.log("Loading videos page:", page);
       const result = await trpcClient.channel.getVideos.query({
         channel_id,
         limit: 12,
-        page
-      })
+        page,
+      });
 
-      setVideos(prev => [...prev, ...result.videos].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i))
+      setVideos(prev =>
+        [...prev, ...result.videos].filter(
+          (v, i, a) => a.findIndex(t => t.id === v.id) === i,
+        ),
+      );
 
       if (result.next_page === null) {
-        setHasMore(false)
+        setHasMore(false);
       } else {
-        setNextPage(result.next_page)
+        setNextPage(result.next_page);
       }
     } catch (error) {
-      console.error("Error loading videos:", error)
+      console.error("Error loading videos:", error);
       if (isTRPCClientError(error)) {
-        alert(error.data?.message || error.message)
+        alert(error.data?.message || error.message);
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
     // Initial load
     loadMore(1);
-  }, [channel_id])
+  }, [channel_id]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0]?.isIntersecting && hasMore && !isLoading) {
-          console.log("Observer triggered, loading page:", nextPage)
-          loadMore(nextPage)
+          console.log("Observer triggered, loading page:", nextPage);
+          loadMore(nextPage);
         }
       },
-      { threshold: 0.1, rootMargin: "100px" }
-    )
+      { threshold: 0.1, rootMargin: "100px" },
+    );
 
     if (observerTarget.current) {
-      observer.observe(observerTarget.current)
+      observer.observe(observerTarget.current);
     }
 
     return () => {
-      observer.disconnect()
-    }
-  }, [hasMore, isLoading, nextPage, channel_id])
+      observer.disconnect();
+    };
+  }, [hasMore, isLoading, nextPage, channel_id]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -253,8 +295,12 @@ function VideoGrid({channel_id}: {channel_id: string}) {
           No videos found for this channel
         </div>
       )}
-      {videos.map((video) => (
-        <Link href={`/video/${video.id}`} key={video.id} className="group cursor-pointer">
+      {videos.map(video => (
+        <Link
+          href={`/play/${video.id}`}
+          key={video.id}
+          className="group cursor-pointer"
+        >
           <div className="aspect-video relative">
             <Image
               src={video.thumbnail}
@@ -269,12 +315,12 @@ function VideoGrid({channel_id}: {channel_id: string}) {
             {/* Play button overlay on hover */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="w-12 h-12 flex items-center justify-center rounded-full bg-black/70">
-                <svg 
-                  className="w-6 h-6 text-white" 
-                  fill="currentColor" 
+                <svg
+                  className="w-6 h-6 text-white"
+                  fill="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path d="M8 5v14l11-7z"/>
+                  <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
             </div>
@@ -284,7 +330,10 @@ function VideoGrid({channel_id}: {channel_id: string}) {
               {video.title}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {video.view_count} views • {new Date(video.published_at || video.created_at).toLocaleDateString()}
+              {video.view_count} views •{" "}
+              {new Date(
+                video.published_at || video.created_at,
+              ).toLocaleDateString()}
             </p>
           </div>
         </Link>
@@ -297,101 +346,107 @@ function VideoGrid({channel_id}: {channel_id: string}) {
       {/* Intersection Observer Target */}
       <div ref={observerTarget} className="h-20 w-full col-span-full"></div>
     </div>
-  )
+  );
 }
 
-function PlaylistGrid({channel_id}: {channel_id: string}) {
-//   const playlists = [
-//     {
-//       id: '1',
-//       title: 'Web Development Basics',
-//       thumbnail: 'https://images.unsplash.com/photo-1593720219276-0b1eacd0aef4?auto=format&fit=crop&q=80&w=1920',
-//       videoCount: '8 videos'
-//     },
-//     {
-//       id: '2',
-//       title: 'Advanced JavaScript Concepts',
-//       thumbnail: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?auto=format&fit=crop&q=80&w=1920',
-//       videoCount: '12 videos'
-//     },
-//     {
-//       id: '3',
-//       title: 'React & Next.js Masterclass',
-//       thumbnail: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&q=80&w=1920',
-//       videoCount: '15 videos'
-//     },
-//     {
-//       id: '4',
-//       title: 'TypeScript Deep Dive',
-//       thumbnail: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?auto=format&fit=crop&q=80&w=1920',
-//       videoCount: '10 videos'
-//     }
-//   ]
+function PlaylistGrid({ channel_id }: { channel_id: string }) {
+  //   const playlists = [
+  //     {
+  //       id: '1',
+  //       title: 'Web Development Basics',
+  //       thumbnail: 'https://images.unsplash.com/photo-1593720219276-0b1eacd0aef4?auto=format&fit=crop&q=80&w=1920',
+  //       videoCount: '8 videos'
+  //     },
+  //     {
+  //       id: '2',
+  //       title: 'Advanced JavaScript Concepts',
+  //       thumbnail: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?auto=format&fit=crop&q=80&w=1920',
+  //       videoCount: '12 videos'
+  //     },
+  //     {
+  //       id: '3',
+  //       title: 'React & Next.js Masterclass',
+  //       thumbnail: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&q=80&w=1920',
+  //       videoCount: '15 videos'
+  //     },
+  //     {
+  //       id: '4',
+  //       title: 'TypeScript Deep Dive',
+  //       thumbnail: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?auto=format&fit=crop&q=80&w=1920',
+  //       videoCount: '10 videos'
+  //     }
+  //   ]
 
-const [playlists, setPlaylists] = useState<RouterOutputs['channel']['getPlaylist']['playlists']>([])
-const [hasMore, setHasMore] = useState<boolean>(true)
-const [isLoading, setIsLoading] = useState<boolean>(false)
-const [nextPage, setNextPage] = useState<number>(1)
-const observerTarget = useRef<HTMLDivElement>(null)
+  const [playlists, setPlaylists] = useState<
+    RouterOutputs["channel"]["getPlaylist"]["playlists"]
+  >([]);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [nextPage, setNextPage] = useState<number>(1);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   async function loadMore(page: number) {
-    if (isLoading) return
-    setIsLoading(true)
+    if (isLoading) return;
+    setIsLoading(true);
     try {
-        console.log("Loading playlists page:", page)
-        const playlists = await trpcClient.channel.getPlaylist.query({
-            channel_id,
-            limit: 10,
-            page
-          })
+      console.log("Loading playlists page:", page);
+      const playlists = await trpcClient.channel.getPlaylist.query({
+        channel_id,
+        limit: 10,
+        page,
+      });
 
-        setPlaylists(pre => [...pre, ...playlists.playlists].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i))
+      setPlaylists(pre =>
+        [...pre, ...playlists.playlists].filter(
+          (v, i, a) => a.findIndex(t => t.id === v.id) === i,
+        ),
+      );
 
-        if (playlists.next_page === null) {
-        setHasMore(false)
-        } else {
-            setNextPage(playlists.next_page)
-        }
+      if (playlists.next_page === null) {
+        setHasMore(false);
+      } else {
+        setNextPage(playlists.next_page);
+      }
     } catch (error) {
-        console.error("Error loading playlists:", error)
-        if (isTRPCClientError(error)) {
-            alert(error.data?.message || error.message)
-        }
+      console.error("Error loading playlists:", error);
+      if (isTRPCClientError(error)) {
+        alert(error.data?.message || error.message);
+      }
     } finally {
-        setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
     // Initial load
     loadMore(1);
-  },[channel_id])
+  }, [channel_id]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0]?.isIntersecting && hasMore && !isLoading) {
-          console.log("Observer triggered, loading page:", nextPage)
-          loadMore(nextPage)
+          console.log("Observer triggered, loading page:", nextPage);
+          loadMore(nextPage);
         }
       },
-      { threshold: 0.1, rootMargin: "100px" }
-    )
+      { threshold: 0.1, rootMargin: "100px" },
+    );
 
     if (observerTarget.current) {
-      observer.observe(observerTarget.current)
+      observer.observe(observerTarget.current);
     }
 
     return () => {
-      observer.disconnect()
-    }
-  }, [hasMore, isLoading, nextPage, channel_id])
+      observer.disconnect();
+    };
+  }, [hasMore, isLoading, nextPage, channel_id]);
 
-//   const {} = trpc.channel.getPlaylist.useQuery({
-//     channel_id,
-//     limit: 10,
-//     page: 1 
-//   })
+  //   const {} = trpc.channel.getPlaylist.useQuery({
+  //     channel_id,
+  //     limit: 10,
+  //     page: 1
+  //   })
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -400,8 +455,12 @@ const observerTarget = useRef<HTMLDivElement>(null)
           No playlists found for this channel
         </div>
       )}
-      {playlists.map((playlist) => (
-        <Link href={`/playlist/${playlist.id}`} key={playlist.id} className="group cursor-pointer">
+      {playlists.map(playlist => (
+        <Link
+          href={`/playlist/${playlist.id}`}
+          key={playlist.id}
+          className="group cursor-pointer"
+        >
           <div className="relative">
             {/* Playlist thumbnail stack effect */}
             <div className="relative z-10 aspect-video">
@@ -415,16 +474,18 @@ const observerTarget = useRef<HTMLDivElement>(null)
               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors">
                 <div className="absolute bottom-3 left-3 text-white space-y-1">
                   <div className="flex items-center gap-2">
-                    <svg 
-                      className="w-5 h-5" 
-                      fill="currentColor" 
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path d="M3.5 3.5h7v7h-7zm10 0h7v7h-7zm-10 10h7v7h-7zm10 0h7v7h-7z"/>
+                      <path d="M3.5 3.5h7v7h-7zm10 0h7v7h-7zm-10 10h7v7h-7zm10 0h7v7h-7z" />
                     </svg>
                     <span className="font-medium">View full playlist</span>
                   </div>
-                  <div className="text-sm text-gray-200">{playlist.total_videos} videos</div>
+                  <div className="text-sm text-gray-200">
+                    {playlist.total_videos} videos
+                  </div>
                 </div>
               </div>
             </div>
@@ -448,5 +509,5 @@ const observerTarget = useRef<HTMLDivElement>(null)
       {/* Intersection Observer Target */}
       <div ref={observerTarget} className="h-20 w-full col-span-full"></div>
     </div>
-  )
+  );
 }
