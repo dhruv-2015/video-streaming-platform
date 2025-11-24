@@ -12,6 +12,8 @@
     "docker:transcoder": "docker build -t dhruv2015/rpi:video-streaming-platform-amd64-transcoder --platform linux/amd64 --target transcoderrunner .",
     "docket:start": "docker-compose up",
     "dev": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\"",
+    "dev:db": "docker compose -f docker-compose.dev.yaml --env-file .env.db up -d",
+    "dev:db:down": "docker compose -f docker-compose.dev.yaml down", 
     "dev:web": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\" --filter=@workspace/web",
     "dev:api": "env-cmd -f .env.local turbo dev --global-deps=\".env.*\" --filter=@workspace/api",
     "db:generate": "turbo db:generate --filter=@workspace/database",

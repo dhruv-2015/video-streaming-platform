@@ -39,6 +39,7 @@ A modern video streaming platform built with Next.js, Express, and MongoDB.
 - Copy .env.example to .env.local
 - fill all variables
 - add http://localhost:3000/api/auth/callback/google and http://localhost:5000/api/auth/callback/google as callback in google console
+- you can use docker to setup database and s3 server by running `pnpm dev:db` (close it with `pnpm dev:db:down`) 
 - for s3  i am using `s3rver` npm pakage
 ```js
 // s3-server.js
@@ -92,4 +93,4 @@ s3rver.run((err, address) => {
  </CORSRule>
 </CORSConfiguration>
 ``` 
-- i am using docker to host chroma db (	`chromadb/chroma image)
+- i am using docker to host chroma db (	`chromadb/chroma` image)
